@@ -1,0 +1,35 @@
+{
+  "name": "mutual-aid-pool",
+  "version": "0.1.0",
+  "description": "Agent-managed mutual aid fund using ERC-8183, ERC-8004, Safe multisig, and Superfluid",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "deploy:erc8183": "tsx src/deploy/deploy-agentic-commerce.ts",
+    "deploy:safe": "tsx src/deploy/create-safe.ts",
+    "demo": "tsx src/demo/run-demo.ts",
+    "test": "vitest run",
+    "lint": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@safe-global/api-kit": "^4.0.1",
+    "@safe-global/protocol-kit": "^6.1.2",
+    "@superfluid-finance/sdk-core": "^0.9.0",
+    "ethers": "^5.8.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "viem": "^2.47.4",
+    "vitest": "^4.1.0"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-viem": "^3.0.4",
+    "@openzeppelin/contracts": "^5.6.1",
+    "dotenv": "^17.3.1",
+    "hardhat": "^3.1.12"
+  }
+}
