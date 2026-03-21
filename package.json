@@ -18,6 +18,8 @@
     "deploy:erc8183": "tsx src/deploy/deploy-erc8183.ts",
     "deploy:safe": "tsx src/deploy/create-safe.ts",
     "deploy:all": "tsx src/deploy/deploy-all.ts",
+    "deploy:status": "tsx src/deploy/deploy-status.ts",
+    "deploy:gasless": "tsx src/deploy/gasless-tx.ts",
     "wallet:check": "tsx src/deploy/check-wallet.ts"
   },
   "engines": {

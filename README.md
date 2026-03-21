@@ -76,6 +76,12 @@ npx tsx src/cli/index.ts claim submit \
 npx tsx src/cli/index.ts pool status --pool 0xSafeAddress
 ```
 
+**Status Network deploy (gasless L2, Chain ID: 1660990954):**
+```bash
+npm run deploy:status   # Deploy StatusAgent contract
+npm run deploy:gasless  # Execute gasless tx (gas=0, costs nothing)
+```
+
 ## Chain Configuration
 
 ```bash
@@ -92,6 +98,7 @@ export CHAIN_NAME=celo-alfajores   # deployed here (x402 + ERC-8004)
 | **Best Agent on Celo** | $5,000 | Deployed on Celo Alfajores |
 | **Best Use of Delegations** | $5,000 | MetaMask delegation in `src/core/delegation.ts` |
 | **Agentic Finance (Uniswap API)** | $5,000 | Uniswap quoter in `src/core/uniswap.ts` |
+| **Agent Services on Base** | $5,000 | x402 enabled on Base Sepolia |
 | **Ship Something Real with OpenServ** | $4,500 | OpenServ integration in `src/core/openserv.ts` |
 | **Let the Agent Cook (PL)** | $4,000 | ERC-8004 + autonomous agent + agent.json |
 | **Agents With Receipts (PL)** | $4,000 | ERC-8004 deployed + agent.json + agent_log.json |
@@ -101,12 +108,12 @@ export CHAIN_NAME=celo-alfajores   # deployed here (x402 + ERC-8004)
 | **Vault Position Monitor** | $1,500 | MCP server in `src/mcp/vault-monitor/server.ts` |
 | **ERC-8183 Open Build** | $2,000 | Full implementation, deployed |
 | **Best Use of Agentic Storage** | $2,000 | Filecoin in `src/core/filecoin.ts` |
+| **Status Network ($50 min)** | $2,000 pool | Chain ID 1660990954 — deploy + gasless tx (gas=0) |
 | **ENS Identity** | $600 | ENS resolution in `src/core/ens.ts` |
 | **ENS Communication** | $600 | ENS resolution in `src/core/ens.ts` |
 | **Escrow Ecosystem Extensions** | $450 | Arkhai in `src/core/arkhai.ts` |
 | **Student Founder's Bet** | $2,500 | Student project |
 | **Mechanism Design (Octant)** | $1,000 | Doc in `docs/octant-mechanism-design.md` |
-| **Agent Services on Base** | $5,000 | x402 enabled on Base Sepolia |
 
 ## Architecture
 
@@ -134,8 +141,10 @@ src/
 │   └── vault-monitor/
 │       └── server.ts     # Vault Position Monitor MCP server
 ├── contracts/
-│   └── treasury/
-│       └── StETHTreasury.sol  # Agent treasury: yield only, no principal access
+│   ├── treasury/
+│   │   └── StETHTreasury.sol  # Agent treasury: yield only, no principal access
+│   └── status/
+│       └── StatusAgent.sol     # Minimal agent registry for Status Network bounty
 ├── cli/
 │   ├── index.ts         # Commander CLI
 │   └── commands/
@@ -143,6 +152,8 @@ src/
 │       └── claim.ts     # claim submit/list/approve/reject
 ├── deploy/
 │   ├── deploy-erc8183.ts  # Deploy ERC-8183 via forge
+│   ├── deploy-status.ts    # Deploy to Status Network Sepolia (Chain ID 1660990954)
+│   ├── gasless-tx.ts      # Execute gasless tx (gas=0) on Status Network
 │   └── create-safe.ts    # Deploy Safe multisig
 ├── demo/
 │   └── run-demo.ts      # Full flow demo

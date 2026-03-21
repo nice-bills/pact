@@ -1,9 +1,9 @@
 import { defineChain } from "viem";
 
 export const STATUS_L2 = defineChain({
-  id: 24484,
-  name: "Status L2",
-  network: "status-l2",
+  id: 1_660_990_954,
+  name: "Status Network Sepolia",
+  network: "status-network-sepolia",
   nativeCurrency: {
     decimals: 18,
     name: "ETH",
@@ -11,13 +11,13 @@ export const STATUS_L2 = defineChain({
   },
   rpcUrls: {
     default: {
-      http: [process.env.STATUS_L2_RPC ?? "https://rpc.status.im"],
+      http: [process.env.STATUS_L2_RPC ?? "https://public.sepolia.rpc.status.network"],
     },
   },
   blockExplorers: {
     default: {
       name: "StatusScan",
-      url: "https://explorer.status.network",
+      url: "https://sepoliascan.status.network",
     },
   },
 });
@@ -25,9 +25,8 @@ export const STATUS_L2 = defineChain({
 export const STATUS_L2_CONFIG = {
   chain: STATUS_L2,
   id: STATUS_L2.id,
-  rpc: process.env.STATUS_L2_RPC ?? "https://rpc.status.im",
-  usdc: "0x0000000000000000000000000000000000000000",
-  explorer: "https://explorer.status.network",
-  x402Enabled: true,
-  erc8004: "0x00000000000000000000000000000000008004" as const,
+  rpc: process.env.STATUS_L2_RPC ?? "https://public.sepolia.rpc.status.network",
+  explorer: "https://sepoliascan.status.network",
+  x402Enabled: false,
+  erc8004: null,
 };
