@@ -27,6 +27,11 @@ const BASE_CHAIN = {
 const ethClient = createPublicClient({ chain: ETH_CHAIN, transport: http() });
 const baseClient = createPublicClient({ chain: BASE_CHAIN, transport: http() });
 
+async function hasCode(addr: Address, client: ReturnType<typeof createPublicClient>): Promise<boolean> {
+  const code = await client.getBytecode({ address: addr });
+  return code !== undefined && code !== "0x";
+}
+
 const LIDO_STETH = "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84";
 const LIDO_WSTETH = "0xc1CBa3fCea344f92D9239c08C0568f6F2F0ee452";
 const WITHDRAWAL_QUEUE = "0x889edC2eDab5f40e902b864aD4D7AdE8E412F9B1";
@@ -118,6 +123,17 @@ const wrapSchema = {
 
 server.tool("lido_wrap", "Wrap stETH into wstETH on Base Sepolia (1:1, no unbonding period)", wrapSchema, {}, async ({ amountStEth, privateKey }) => {
   try {
+    const deployed = await hasCode(LIDO_WSTETH as Address, baseClient);
+    if (!deployed) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({
+          success: false,
+          error: "wstETH not deployed on Base Sepolia. wstETH is only available on Ethereum mainnet and Base mainnet. On Base Sepolia testnet, wrap/unwrap is not yet available. Track Lido deployment at https://docs.lido.fi/earn/",
+          network: "Base Sepolia",
+          address: LIDO_WSTETH,
+        }) }],
+      };
+    }
     const amount = parseEth(amountStEth);
     const account = privateKeyToAccount(privateKey as `0x${string}`);
     const wallet = createWalletClient({ account, chain: BASE_CHAIN, transport: http(BASE_RPC) });
@@ -140,6 +156,17 @@ const unwrapSchema = {
 
 server.tool("lido_unwrap", "Unwrap wstETH back to stETH on Base Sepolia", unwrapSchema, {}, async ({ amountWstEth, privateKey }) => {
   try {
+    const deployed = await hasCode(LIDO_WSTETH as Address, baseClient);
+    if (!deployed) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({
+          success: false,
+          error: "wstETH not deployed on Base Sepolia. wstETH is only available on Ethereum mainnet and Base mainnet. On Base Sepolia testnet, wrap/unwrap is not yet available. Track Lido deployment at https://docs.lido.fi/earn/",
+          network: "Base Sepolia",
+          address: LIDO_WSTETH,
+        }) }],
+      };
+    }
     const amount = parseEth(amountWstEth);
     const account = privateKeyToAccount(privateKey as `0x${string}`);
     const wallet = createWalletClient({ account, chain: BASE_CHAIN, transport: http(BASE_RPC) });
@@ -162,20 +189,29 @@ const balanceSchema = {
 
 server.tool("lido_balance", "Get stETH/wstETH balance and pending rewards for an address", balanceSchema, {}, async ({ address, network }) => {
   try {
-    let stEthBal: bigint;
-    let wstEthBal: bigint | null = null;
-
-    if (network === "mainnet") {
-      stEthBal = await ethClient.readContract({ address: LIDO_STETH as Address, abi: erc20Abi, functionName: "balanceOf", args: [address as Address] }) as bigint;
-    } else {
-      wstEthBal = await baseClient.readContract({ address: LIDO_WSTETH as Address, abi: erc20Abi, functionName: "balanceOf", args: [address as Address] }) as bigint;
+    if (network === "base") {
+      const deployed = await hasCode(LIDO_WSTETH as Address, baseClient);
+      if (!deployed) {
+        return {
+          content: [{ type: "text", text: JSON.stringify({
+            address,
+            network: "Base Sepolia",
+            status: "unavailable",
+            message: "wstETH not deployed on Base Sepolia. Only Ethereum mainnet has wstETH. On Base Sepolia, use lido_balance with network='mainnet' to query stETH balance.",
+            suggestion: "Use network='mainnet' for stETH balance queries on testnets.",
+          }) }],
+        };
+      }
+      const wstEthBal = await baseClient.readContract({ address: LIDO_WSTETH as Address, abi: erc20Abi, functionName: "balanceOf", args: [address as Address] }) as bigint;
       const rate = await baseClient.readContract({ address: LIDO_WSTETH as Address, abi: wstETHAbi, functionName: "stEthPerToken" }) as bigint;
-      stEthBal = (wstEthBal * rate) / BigInt(1e18);
+      const stEthBal = (wstEthBal * rate) / BigInt(1e18);
+      const rewards = await ethClient.readContract({ address: LIDO_STETH as Address, abi: stETHAbi, functionName: "getRewards", args: [address as Address] }) as bigint;
+      return { content: [{ type: "text", text: JSON.stringify({ address, network, stEthBalance: formatEth(stEthBal), wstEthBalance: formatEth(wstEthBal), pendingRewards: formatEth(rewards) }) }] };
     }
 
+    const stEthBal = await ethClient.readContract({ address: LIDO_STETH as Address, abi: erc20Abi, functionName: "balanceOf", args: [address as Address] }) as bigint;
     const rewards = await ethClient.readContract({ address: LIDO_STETH as Address, abi: stETHAbi, functionName: "getRewards", args: [address as Address] }) as bigint;
-
-    return { content: [{ type: "text", text: JSON.stringify({ address, network, stEthBalance: formatEth(stEthBal), wstEthBalance: wstEthBal ? formatEth(wstEthBal) : null, pendingRewards: formatEth(rewards) }) }] };
+    return { content: [{ type: "text", text: JSON.stringify({ address, network, stEthBalance: formatEth(stEthBal), wstEthBalance: null, pendingRewards: formatEth(rewards) }) }] };
   } catch (e) {
     return { content: [{ type: "text", text: `Balance query failed: ${e}` }], isError: true };
   }
@@ -225,6 +261,20 @@ server.tool("lido_dry_run", "Simulate stake/unstake/wrap/unwrap without executio
   try {
     const parsed = parseEth(amount);
     const client = network === "mainnet" ? ethClient : baseClient;
+
+    if ((operation === "wrap" || operation === "unwrap") && network === "base") {
+      const deployed = await hasCode(LIDO_WSTETH as Address, baseClient);
+      if (!deployed) {
+        return {
+          content: [{ type: "text", text: JSON.stringify({
+            success: false,
+            error: "wstETH not deployed on Base Sepolia. dry_run for wrap/unwrap only available on Ethereum mainnet.",
+            operation,
+            network,
+          }) }],
+        };
+      }
+    }
 
     let addr: Address, abi: any, fn: string, args: any, value = 0n;
 
