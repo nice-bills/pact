@@ -93,7 +93,7 @@ export class MutualAidPool {
         return getStreamInfo(rpcUrl, sender, receiver, token);
       });
   }
-  get address(): `0x${string}` {
+  get address(): `0x${string}` { // Returns deployer key address (use config.safeAddress for Safe)
     return this.account.address as `0x${string}`;
   }
   addFoundingMember(address: `0x${string}`): void {

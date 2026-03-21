@@ -149,12 +149,29 @@ export async function releaseAlkahestEscrow(
 
 function parseEscrowCreatedLog(logs: { topics: `0x${string}`[]; data: `0x${string}` }[]): { escrowId: string } {
   for (const log of logs) {
-    if (log.topics.length > 0) {
-      const escrowId = BigInt(log.data);
-      if (escrowId > BigInt(0)) {
-        return { escrowId: escrowId.toString() };
+    if (log.topics.length > 1) {
+      const encodedId = log.topics[1];
+      if (encodedId !== "0x" + "0".repeat(64)) {
+        const escrowId = ethersDataSlice(encodedId);
+        if (escrowId) return { escrowId };
       }
     }
   }
   return { escrowId: "0" };
+}
+
+function ethersDataSlice(hex: `0x${string}`): string | null {
+  try {
+    const stripped = hex.startsWith("0x") ? hex : "0x" + hex;
+    const dataStr = stripped.slice(2);
+    let str = "";
+    for (let i = 0; i < dataStr.length; i += 2) {
+      const charCode = parseInt(dataStr.slice(i, i + 2), 16);
+      if (charCode === 0) break;
+      str += String.fromCharCode(charCode);
+    }
+    return str.trim() || null;
+  } catch {
+    return null;
+  }
 }
