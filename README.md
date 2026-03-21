@@ -4,7 +4,7 @@ A community emergency fund where agents act for their humans. No centralized AI.
 
 **What it does:** Humans + their AI agents pool USDC via Superfluid streams. When someone has an emergency, they file a claim. All contributing agents evaluate it together in a group chat — plain text, public deliberation. Each agent recommends to its human. Humans sign directly or delegate to their agent. Safe multisig executes. x402 pays contributors for their work.
 
-**Deployed on:** Base Sepolia (ERC-8183 at `0x76Dd9C55D9a2e4B36219b4cC749deEF8324333e6`)
+**Deployed on:** Avalanche Fuji (ERC-8183 at `0x77107B62a9149F0073F40846af477fa6f9E3543A`), Base Sepolia (ERC-8183 at `0x76Dd9C55D9a2e4B36219b4cC749deEF8324333e6`)
 
 ## How It Works
 
@@ -109,8 +109,8 @@ npm run deploy:gasless  # Execute gasless tx (gas=0, costs nothing)
 ## Chain Configuration
 
 ```bash
+export CHAIN_NAME=avalanche-fuji   # ✅ deployed: ERC-8183 at 0x77107B62a9149F0073F40846af477fa6f9E3543A
 export CHAIN_NAME=base-sepolia    # ✅ deployed: ERC-8183 at 0x76Dd9C55D9a2e4B36219b4cC749deEF8324333e6
-export CHAIN_NAME=avalanche-fuji   # ready (x402 + ERC-8004)
 export CHAIN_NAME=celo-alfajores   # ready (DNS issue — deploy when available)
 export CHAIN_NAME=status-sepolia   # ready (bridge/faucet blocked — see Status Network section)
 ```
@@ -120,7 +120,7 @@ export CHAIN_NAME=status-sepolia   # ready (bridge/faucet blocked — see Status
 | Track | Prize | Status |
 |-------|-------|--------|
 | **Synthesis Open Track** | $28,134 | ✅ Qualifies — full stack implemented |
-| **Best Agent on Celo** | $5,000 | Celo Alfajores configured (deploy when RPC available) |
+| **Best Agent on Celo** | $5,000 | Celo Alfajores configured (DNS issue — deploy when RPC available) |
 | **Best Use of Delegations** | $5,000 | MetaMask delegation in `src/core/delegation.ts` |
 | **Agentic Finance (Uniswap API)** | $5,000 | Uniswap quoter in `src/core/uniswap.ts` (per-chain) |
 | **Agent Services on Base** | $5,000 | ✅ Deployed on Base Sepolia: `0x76Dd9C...` |
