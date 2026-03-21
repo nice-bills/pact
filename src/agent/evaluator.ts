@@ -1,5 +1,6 @@
 import type { AgentRecommendation, ClaimSubmission } from "../core/types.js";
-import { RPC_URL } from "../core/config.js";
+import { RPC_URL, USDC_ADDRESS } from "../core/config.js";
+import { sendX402Payment } from "../core/x402.js";
 
 const MINIMAX_API_URL = "https://api.minimax.io/v1/text/chatcompletion_v2";
 
@@ -65,10 +66,24 @@ function parseEvaluationResponse(content: string): AgentRecommendation {
   }
 }
 
+const GENLAYER_IC_FEE = BigInt(1_000_000); // 1 USDC (6 decimals)
+
 async function evaluateViaGenLayerIC(
   submission: ClaimSubmission,
   icAddress: string
 ): Promise<AgentRecommendation> {
+  const x402Url = process.env.GENLAYER_IC_X402_URL ?? "http://localhost:8080";
+  try {
+    if (process.env.X402_AGENT_ENABLED === "true") {
+      await sendX402Payment(
+        x402Url,
+        { recipient: icAddress as `0x${string}`, amount: GENLAYER_IC_FEE },
+        GENLAYER_IC_FEE
+      );
+    }
+  } catch (err) {
+    console.warn(`x402 payment to GenLayer IC failed: ${err}, proceeding without payment`);
+  }
   const response = await fetch(`${RPC_URL}/evaluate_claim`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

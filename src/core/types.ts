@@ -57,7 +57,7 @@ export interface ClaimSubmission {
   nonce?: string;
 }
 
-export interface SignedClaimSubmission extends ClaimSubmission {
+export interface SignedClaimSubmission extends Omit<ClaimSubmission, 'nonce'> {
   signedAt: number;
   nonce: string;
   signature: `0x${string}`;

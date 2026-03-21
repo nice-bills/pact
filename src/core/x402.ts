@@ -1,4 +1,4 @@
-import { CHAIN_NAME, CHAIN_ID, RPC_URL, USDC_ADDRESS, CHAIN } from "../core/config.js";
+import { CHAIN_NAME, CHAIN_ID, RPC_URL, USDC_ADDRESS, CHAIN, X402_ENABLED } from "../core/config.js";
 
 export interface x402PaymentRequest {
   recipient: `0x${string}`;
@@ -65,7 +65,7 @@ export async function sendX402Payment(
 }
 
 export function isX402Enabled(): boolean {
-  return CHAIN_NAME === "avalanche-fuji";
+  return X402_ENABLED;
 }
 
 export function getX402Config() {

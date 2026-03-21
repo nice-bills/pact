@@ -63,8 +63,8 @@ export class MutualAidPool {
     privateKey: `0x${string}`,
     getStreamInfoFn?: StreamInfoFn
   ) {
-    if (![84532, 43113].includes(config.chainId)) {
-      throw new Error(`Unsupported chainId ${config.chainId}. Expected Base Sepolia (84532) or Avalanche Fuji (43113).`);
+    if (![84532, 43113, 44787].includes(config.chainId)) {
+      throw new Error(`Unsupported chainId ${config.chainId}. Expected Base Sepolia (84532), Avalanche Fuji (43113), or Celo Alfajores (44787).`);
     }
     if (isZeroAddress(config.safeAddress)) {
       throw new Error("Pool safeAddress must be set to a non-zero address");

@@ -13,8 +13,8 @@ function getPoolConfig(poolAddress: `0x${string}`): PoolConfig {
     rpcUrl: RPC_URL,
     threshold: 2,
     monthlyContributionUsd: 5,
-    superfluidHost: SUPERFLUID_HOST,
-    superTokenAddress: USDCX_ADDRESS,
+    superfluidHost: SUPERFLUID_HOST ?? undefined,
+    superTokenAddress: USDCX_ADDRESS ?? undefined,
   };
 }
 
@@ -90,6 +90,10 @@ export async function poolStreamOpen(opts: {
   pool: `0x${string}`;
   flowRate: number;
 }): Promise<void> {
+  if (!SUPERFLUID_HOST || !USDCX_ADDRESS) {
+    console.error("Superfluid not supported on this chain");
+    return;
+  }
   const config = getPoolConfig(opts.pool);
   const privateKey = getDeployerKey();
   const { openContributionStream } = await import("../../core/streaming.js");
