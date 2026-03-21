@@ -1,6 +1,5 @@
 import { CHAIN_ID, RPC_URL, USDC_ADDRESS } from "../../core/config";
 import { MutualAidPool } from "../../core/pool";
-import { evaluateClaim } from "../../agent/evaluator";
 import { buildClaimAuthorizationMessage } from "../../core/claims";
 import { createWalletClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
@@ -41,7 +40,7 @@ export async function claimSubmit(opts: {
   const config = getPoolConfig(opts.pool);
   const pool = new MutualAidPool(config, getDeployerKey());
 
-  const nonce = Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+  const nonce = crypto.randomUUID().replace(/-/g, "").slice(0, 16);
   const submission: ClaimSubmission = {
     claimantAddress: claimant,
     amountUsd: opts.amount,
@@ -64,29 +63,9 @@ export async function claimSubmit(opts: {
   console.log(`  Description: ${opts.description}`);
   console.log(`  Signed: ${signature.slice(0, 20)}...`);
 
-  const apiKey = process.env.MINIMAX_API_KEY ?? "";
-  if (apiKey) {
-    console.log("\nEvaluating claim via AI agent...");
-    const rec = await evaluateClaim(signedSubmission, apiKey);
-    console.log(`  Approve: ${rec.approve}`);
-    console.log(`  Confidence: ${rec.confidence}%`);
-    console.log(`  Reasoning: ${rec.reasoning}`);
-
-    if (rec.approve && rec.confidence >= 50) {
-      console.log("\n  -> Claim AUTO-APPROVED by AI agent. Creating on-chain job...");
-      try {
-        const result = await pool.createClaim(signedSubmission);
-        console.log(`  Job created: #${result.jobId}`);
-        console.log(`  Txs: createJob=${result.txs.createJob}`);
-      } catch (error) {
-        console.error(`  On-chain job creation failed: ${error}`);
-      }
-    } else {
-      console.log("\n  -> Claim flagged for committee review (confidence below threshold).");
-    }
-  } else {
-    console.log("(No MINIMAX_API_KEY — skipped agent evaluation)");
-  }
+  console.log("\nClaim routed to group chat for deliberation.");
+  console.log("Contributors' AI agents evaluate independently in the group thread.");
+  console.log("After deliberation, a Safe multisig executes payment via x402.");
 }
 
 export async function claimList(opts: {

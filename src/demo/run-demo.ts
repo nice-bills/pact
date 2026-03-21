@@ -1,6 +1,5 @@
 import { CHAIN_ID, RPC_URL, USDC_ADDRESS } from "../core/config.js";
 import { MutualAidPool } from "../core/pool.js";
-import { evaluateClaim } from "../agent/evaluator.js";
 import type { PoolConfig } from "../core/types.js";
 
 const DEMO_PRIVATE_KEY = process.env.DEPLOYER_PRIVATE_KEY as `0x${string}`;
@@ -65,51 +64,38 @@ async function main() {
   const claimantClass = pool.getClaimantClass(mariaClaim.claimantAddress);
   console.log(`   Claimant class: ${claimantClass}`);
 
-  const apiKey = process.env.MINIMAX_API_KEY ?? "";
-  let recommendation;
-  if (apiKey) {
-    console.log("\n5. AI agent evaluating claim via MiniMax M2.5...");
-    recommendation = await evaluateClaim(mariaClaim, apiKey);
-    console.log(`   Approve: ${recommendation.approve}`);
-    console.log(`   Confidence: ${recommendation.confidence}%`);
-    console.log(`   Reasoning: ${recommendation.reasoning}`);
-  } else {
-    console.log("\n5. AI evaluation skipped (set MINIMAX_API_KEY to enable)");
-    recommendation = { approve: true, confidence: 75, reasoning: "Demo mode — no API key", evaluatedAt: Date.now() };
-  }
+  console.log("\n5. Claim routed to group chat for deliberation.");
+  console.log("   Contributors' AI agents evaluate independently in the group thread.");
+  console.log("   (In production: Claude/GPT/Gemini agents text each other in Discord/Telegram)");
+  console.log("   x402 micro-payments reward agents for their evaluation work.");
 
   console.log("\n6. Claim routing:");
-  if (recommendation.approve && recommendation.confidence >= 50) {
-    console.log("   -> AI approved. Creating on-chain job...");
-    try {
-      const result = await pool.createClaim(mariaClaim);
-      console.log(`   Job #${result.jobId} created on ${poolConfig.agenticCommerceAddress}`);
-      console.log(`   Txs:`);
-      console.log(`     createJob:   ${result.txs.createJob}`);
-      console.log(`     setBudget:   ${result.txs.setBudget}`);
-      console.log(`     approve:     ${result.txs.approveBudget}`);
-      console.log(`     fundJob:     ${result.txs.fundJob}`);
+  console.log("   -> Creating on-chain job via ERC-8183...");
+  try {
+    const result = await pool.createClaim(mariaClaim);
+    console.log(`   Job #${result.jobId} created on ${poolConfig.agenticCommerceAddress}`);
+    console.log(`   Txs:`);
+    console.log(`     createJob:   ${result.txs.createJob}`);
+    console.log(`     setBudget:   ${result.txs.setBudget}`);
+    console.log(`     approve:     ${result.txs.approveBudget}`);
+    console.log(`     fundJob:     ${result.txs.fundJob}`);
 
-      console.log("\n7. Claim lifecycle:");
-      console.log("   Job is now OPEN → FUNDED. Awaiting evaluator submission.");
+    console.log("\n7. Claim lifecycle:");
+    console.log("   Job is now OPEN → FUNDED. Awaiting evaluator submission.");
 
-      const jobData = await pool.getJob(result.jobId);
-      console.log(`   Job status: ${JSON.stringify(jobData).slice(0, 200)}...`);
+    const jobData = await pool.getJob(result.jobId);
+    console.log(`   Job status: ${JSON.stringify(jobData).slice(0, 200)}...`);
 
-      console.log("\n8. Committee approval (simulated):");
-      console.log("   Alice: votes APPROVE");
-      console.log("   Bob: votes APPROVE");
-      console.log("   Threshold 2/3 reached.");
+    console.log("\n8. Committee approval (simulated):");
+    console.log("   Alice: votes APPROVE");
+    console.log("   Bob: votes APPROVE");
+    console.log("   Threshold 2/3 reached.");
 
-      const completeTx = await pool.completeClaim(result.jobId, "Committee unanimous approval");
-      console.log(`   Claim COMPLETED: ${completeTx}`);
-    } catch (error) {
-      console.log(`   On-chain job creation failed: ${error}`);
-      console.log("   (This is expected if Safe has no USDC or contracts aren't deployed)");
-    }
-  } else {
-    console.log("   -> Flagged for committee review.");
-    console.log("   Committee must vote manually via claimApprove command.");
+    const completeTx = await pool.completeClaim(result.jobId, "Committee unanimous approval");
+    console.log(`   Claim COMPLETED: ${completeTx}`);
+  } catch (error) {
+    console.log(`   On-chain job creation failed: ${error}`);
+    console.log("   (This is expected if Safe has no USDC or contracts aren't deployed)");
   }
 
   console.log("\n=== Demo Complete ===");

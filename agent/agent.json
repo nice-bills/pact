@@ -1,0 +1,91 @@
+{
+  "name": "Mutual Aid Pool Agent",
+  "version": "1.0.0",
+  "description": "AI agent that manages a community emergency fund. Evaluates claims, routes payments via Safe multisig, and coordinates group chat deliberation for mutual aid decisions.",
+  "operatorWallet": "0x4fc9391f360716d905862964a019a83cc1dc10e7232b2b93d4196b212319ec35",
+  "erc8004Identity": {
+    "registry": "0x0000000000000000000000000000000000008004",
+    "chainId": 43113,
+    "agentId": null,
+    "registrationTxn": null
+  },
+  "supportedTools": [
+    {
+      "name": "submit_claim",
+      "description": "Submit an emergency claim to the mutual aid pool with evidence IPFS hash",
+      "params": ["amountUsd", "description", "evidenceIpfsHash"]
+    },
+    {
+      "name": "evaluate_claim",
+      "description": "Evaluate a claim and recommend approve/reject based on evidence review",
+      "params": ["claimantAddress", "amountUsd", "description", "evidenceIpfsHash"]
+    },
+    {
+      "name": "vouch_for_member",
+      "description": "Vouch for a new member to join the mutual aid pool",
+      "params": ["voucheeAddress"]
+    },
+    {
+      "name": "open_contribution_stream",
+      "description": "Open a Superfluid USDCx stream to the pool as monthly contribution",
+      "params": ["flowRatePerMonth"]
+    },
+    {
+      "name": "sync_member_streams",
+      "description": "Sync all member contribution streams and update membership status"
+    },
+    {
+      "name": "resolve_ens",
+      "description": "Resolve an ENS name to an Ethereum address",
+      "params": ["ensName"]
+    },
+    {
+      "name": "send_x402_payment",
+      "description": "Send an x402 micro-payment to another agent for evaluation work",
+      "params": ["recipient", "amount", "url"]
+    },
+    {
+      "name": "swap_usdc",
+      "description": "Swap USDC for another token via Uniswap V3",
+      "params": ["tokenOut", "amountIn", "recipient"]
+    },
+    {
+      "name": "quote_swap",
+      "description": "Get a Uniswap V3 quote for a swap",
+      "params": ["tokenIn", "tokenOut", "amountIn"]
+    },
+    {
+      "name": "register_erc8004",
+      "description": "Register an agent identity on ERC-8004",
+      "params": ["seed"]
+    }
+  ],
+  "techStack": {
+    "language": "TypeScript",
+    "runtime": "Node.js",
+    "chains": ["Avalanche Fuji (43113)", "Celo Alfajores (44787)", "Base Sepolia (84532)"],
+    "contracts": [
+      "AgenticCommerce (ERC-8183)",
+      "ERC8004IdentityRegistry",
+      "Safe Multisig",
+      "Superfluid Host"
+    ],
+    "libraries": ["viem", "ethers", "@safe-global/protocol-kit", "@superfluid-finance/sdk-core"]
+  },
+  "computeConstraints": {
+    "maxGasPerTx": "500000",
+    "maxConcurrentStreams": 10,
+    "evaluationTimeoutMs": 30000,
+    "maxRetries": 3
+  },
+  "taskCategories": [
+    "claim_evaluation",
+    "pool_management",
+    "member_vouching",
+    "contribution_collection",
+    "payment_execution",
+    "deliberation_coordination"
+  ],
+  "manifestVersion": "1.0",
+  "devspotCompatible": true
+}

@@ -4,7 +4,7 @@ A community emergency fund where agents act for their humans. No centralized AI.
 
 **What it does:** Humans + their AI agents pool USDC via Superfluid streams. When someone has an emergency, they file a claim. All contributing agents evaluate it together in a group chat — plain text, public deliberation. Each agent recommends to its human. Humans sign directly or delegate to their agent. Safe multisig executes. x402 pays contributors for their work.
 
-**Deployed on:** Avalanche Fuji (ERC-8183 + Safe)
+**Deployed on:** Avalanche Fuji (ERC-8183 + Safe), Celo Alfajores, Base Sepolia
 
 ## How It Works
 
@@ -39,9 +39,11 @@ x402 pays each evaluator's agent
 - **ERC-8004** — agent identity + portable reputation
 - **x402** — micro-payments to agents for evaluation work
 - **ENS** — discoverable pool names instead of hex addresses
-- **Aave/Lido** — yield on idle pool funds (agent budget from yield only)
+- **Lido stETH** — yield on idle pool funds
 - **MetaMask Delegation** — programmable agent signing authority
 - **Locus** — spending guardrails on pool agent
+- **Uniswap V3** — token swaps for pool rebalancing
+- **Filecoin** — evidence storage for claims
 
 ## Quick Start
 
@@ -77,31 +79,34 @@ npx tsx src/cli/index.ts pool status --pool 0xSafeAddress
 ## Chain Configuration
 
 ```bash
-export CHAIN_NAME=avalanche-fuji   # deployed here
-export CHAIN_NAME=base-sepolia    # deploy here
-export CHAIN_NAME=celo-alfajores   # deploy here (manual)
+export CHAIN_NAME=avalanche-fuji   # deployed here (x402 + ERC-8004)
+export CHAIN_NAME=base-sepolia    # deployed here (x402 + ERC-8004)
+export CHAIN_NAME=celo-alfajores   # deployed here (x402 + ERC-8004)
 ```
 
 ## Supported Hackathon Tracks
 
-| Track | Prize | Integration |
-|-------|-------|-------------|
-| **Open Track** | $28,300 | Everything below |
-| **Celo** | $10,000 | Real-economy stablecoin transactions for unbanked |
-| **MetaMask** | $10,000 | Delegation Framework — agent signing with limits |
-| **Lido** | $3,000 | Yield on idle funds, agent budget from yield only |
-| **OpenServ** | $5,000 | Multi-agent coordination with x402 payments |
-| **Protocol Labs** | $4,004 | ERC-8004 — trust layer for agent identity |
-| **Base** | $5,000 | Service on Base discoverable and payable |
-| **Octant** | $3,000 | Claim evaluation as impact evidence |
-| **Locus** | $3,000 | Payment guardrails for AI spending |
-| **Avalanche** | $2,000 | ERC-8004 + x402 on Avalanche Fuji |
-| **Filecoin** | $2,000 | Evidence storage |
-| **Virtuals** | $2,000 | ERC-8183 experimentation |
-| **Arkhai** | $1,000 | Alkahest escrow protocol |
-| **ENS** | $1,730 | ENS names for pools |
-| **College XYZ** | $2,500 | Student-built AI x web3 |
-| **Status L2** | $50 | Deploy on zero-fee L2 with AI |
+| Track | Prize | Status |
+|-------|-------|--------|
+| **Synthesis Open Track** | $28,134 | Qualifies |
+| **Best Agent on Celo** | $5,000 | Deployed on Celo Alfajores |
+| **Best Use of Delegations** | $5,000 | MetaMask delegation in `src/core/delegation.ts` |
+| **Agentic Finance (Uniswap API)** | $5,000 | Uniswap quoter in `src/core/uniswap.ts` |
+| **Ship Something Real with OpenServ** | $4,500 | OpenServ integration in `src/core/openserv.ts` |
+| **Let the Agent Cook (PL)** | $4,000 | ERC-8004 + autonomous agent + agent.json |
+| **Agents With Receipts (PL)** | $4,000 | ERC-8004 deployed + agent.json + agent_log.json |
+| **Best Use of Locus** | $3,000 | Locus guardrails in `src/core/locus.ts` |
+| **Lido MCP** | $5,000 | MCP server in `src/mcp/lido/server.ts` + lido.skill.md |
+| **stETH Agent Treasury** | $3,000 | Contract in `src/contracts/treasury/StETHTreasury.sol` |
+| **Vault Position Monitor** | $1,500 | MCP server in `src/mcp/vault-monitor/server.ts` |
+| **ERC-8183 Open Build** | $2,000 | Full implementation, deployed |
+| **Best Use of Agentic Storage** | $2,000 | Filecoin in `src/core/filecoin.ts` |
+| **ENS Identity** | $600 | ENS resolution in `src/core/ens.ts` |
+| **ENS Communication** | $600 | ENS resolution in `src/core/ens.ts` |
+| **Escrow Ecosystem Extensions** | $450 | Arkhai in `src/core/arkhai.ts` |
+| **Student Founder's Bet** | $2,500 | Student project |
+| **Mechanism Design (Octant)** | $1,000 | Doc in `docs/octant-mechanism-design.md` |
+| **Agent Services on Base** | $5,000 | x402 enabled on Base Sepolia |
 
 ## Architecture
 
@@ -110,52 +115,65 @@ src/
 ├── core/
 │   ├── pool.ts          # MutualAidPool — Safe + ERC-8183 + stream sync
 │   ├── claims.ts        # Claim authorization + signature verification
-│   ├── streaming.ts     # Superfluid USDCx stream management
+│   ├── streaming.ts      # Superfluid USDCx stream management
 │   ├── x402.ts          # x402 HTTP payment protocol
 │   ├── ens.ts           # ENS name resolution + registration helper
-│   ├── erc8004.ts       # ERC-8004 identity registry
+│   ├── erc8004.ts      # ERC-8004 identity registry
 │   ├── delegation.ts     # MetaMask Delegation Framework
 │   ├── locus.ts         # Locus payment guardrails
-│   ├── lido.ts          # Aave USDC staking for yield
+│   ├── lido.ts          # Lido stETH staking + queries
 │   ├── filecoin.ts      # Filecoin Onchain Cloud for evidence
-│   ├── uniswap.ts       # Uniswap V3 token swaps
-│   ├── arkhai.ts        # Alkahest escrow protocol
+│   ├── uniswap.ts       # Uniswap V3 token swaps + quoter
+│   ├── arkhai.ts       # Alkahest escrow protocol
+│   ├── openserv.ts      # OpenServ workflow + ERC-8004 integration
+│   ├── statusL2.ts      # Status L2 chain config
 │   └── config.ts        # Multi-chain config (CHAIN_NAME env var)
-├── agent/
-│   └── evaluator.ts     # Claim evaluation (for agent integration)
+├── mcp/
+│   ├── lido/
+│   │   └── server.ts     # Lido MCP server (stake/unstake/wrap/governance)
+│   └── vault-monitor/
+│       └── server.ts     # Vault Position Monitor MCP server
+├── contracts/
+│   └── treasury/
+│       └── StETHTreasury.sol  # Agent treasury: yield only, no principal access
 ├── cli/
 │   ├── index.ts         # Commander CLI
 │   └── commands/
 │       ├── pool.ts      # pool create/status/sync/stream-open
-│       ├── claim.ts     # claim submit/list/approve/reject
-│       └── serve.ts     # HTTP health server
+│       └── claim.ts     # claim submit/list/approve/reject
 ├── deploy/
 │   ├── deploy-erc8183.ts  # Deploy ERC-8183 via forge
 │   └── create-safe.ts    # Deploy Safe multisig
 ├── demo/
 │   └── run-demo.ts      # Full flow demo
+├── agent/
+│   └── agent.json       # DevSpot agent manifest
+├── docs/
+│   └── octant-mechanism-design.md  # Mechanism design for Octant track
 └── skills/
-    └── SKILL.md         # Agent-facing SDK docs
+    ├── SKILL.md         # Agent-facing SDK docs
+    └── lido.skill.md   # Lido MCP server skill for agents
 ```
 
 ## Testing
 
 ```bash
-npm run test          # 36 vitest unit tests
+npm run test          # 31 vitest unit tests
 forge test           # 26 Solidity forge tests
 npm run lint          # TypeScript type check
 npm run build         # Compile TypeScript
-npm run test:e2e      # Playwright E2E tests
+npx tsc -p tsconfig.mcp.json  # Build MCP servers
 ```
 
 ## Key Design Decisions
 
-1. **No centralized evaluator** — each contributor's own agent evaluates
-2. **Plain text deliberation** — agents post recommendations publicly in group chats
+1. **No centralized evaluator** — each contributor's own agent evaluates independently
+2. **Plain text deliberation** — agents text each other publicly in group chats
 3. **Humans always in control** — agents can recommend but humans sign (or explicitly delegate)
 4. **x402 pays for work** — tiny micro-payments to agents for evaluation
 5. **ERC-8004 for identity** — portable reputation that follows agents across chains
 6. **ENS for pools** — discoverable names instead of hex addresses
+7. **Yield for agent budgets** — stETH treasury gives agents operating budget from yield only
 
 ## Security
 
@@ -164,3 +182,4 @@ npm run test:e2e      # Playwright E2E tests
 - Nonce-resilient transaction submission
 - Spending guardrails via Locus
 - Delegation scope limits via MetaMask Delegation Framework
+- Principal structurally inaccessible in StETHTreasury (agent can only spend yield)

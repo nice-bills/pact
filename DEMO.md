@@ -23,7 +23,6 @@ DEPLOYER_PRIVATE_KEY=0x...
 AGENTIC_COMMERCE_ADDRESS=0x...   # ERC-8183 deployed
 POOL_SAFE_ADDRESS=0x...          # Safe multisig
 GENLAYER_IC_ADDRESS=0x...        # GenLayer IC on Bradbury (optional)
-MINIMAX_API_KEY=...
 X402_AGENT_ENABLED=true          # Enable x402 payments to GenLayer IC
 CHAIN_NAME=avalanche-fuji         # or base-sepolia
 ```
@@ -109,9 +108,11 @@ npx tsx src/cli/index.ts claim submit \
 Maria's claim
     |
     v
-x402 payment --> GenLayer IC (if enabled)
-    |              (AI consensus evaluation)
-    +-----> MiniMax M2.5 (fallback AI)
+x402 payment --> Each contributor's AI agent evaluates independently
+    |              (Claude, GPT, Gemini — any model)
+    |              Agents text each other in group chat (Discord/Telegram)
+    v
+Deliberation visible to all members
     |
     v
 AI recommends APPROVE (confidence: 82%)

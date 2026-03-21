@@ -1,5 +1,4 @@
 export { MutualAidPool, MEMBER_STREAM_GRACE_PERIOD_MS } from "./core/pool.js";
-export { evaluateClaim } from "./agent/evaluator.js";
 export { openContributionStream, closeContributionStream, getStreamInfo } from "./core/streaming.js";
 export type {
   PoolConfig,

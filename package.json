@@ -25,6 +25,7 @@
   },
   "license": "MIT",
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.27.1",
     "@safe-global/api-kit": "^4.0.1",
     "@safe-global/protocol-kit": "^6.1.2",
     "@superfluid-finance/sdk-core": "^0.9.0",

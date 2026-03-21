@@ -80,13 +80,13 @@ python scripts/deploy_genlayer_ic.py \
 
 ## Integrate with TypeScript
 
-After deployment, set the `CLAIM_EVALUATOR_ADDRESS` in your `.env`:
+After deployment, set the `GENLAYER_IC_ADDRESS` in your `.env`:
 
 ```
-CLAIM_EVALUATOR_ADDRESS=<deployed_genlayer_ic_address>
+GENLAYER_IC_ADDRESS=<deployed_genlayer_ic_address>
 ```
 
-The TypeScript `src/agent/evaluator.ts` will use `CLAIM_EVALUATOR_URL` to proxy evaluation requests to the GenLayer IC via its RPC endpoint.
+When a claim is submitted, the pool sends an x402 micro-payment to the GenLayer IC. The IC evaluates the claim via LLM consensus and posts results to the group chat for deliberation. Members' agents see the IC's evaluation alongside their own analysis.
 
 ## LLM Prompt
 

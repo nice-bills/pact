@@ -11,8 +11,6 @@ services:
       - AGENTIC_COMMERCE_ADDRESS=${AGENTIC_COMMERCE_ADDRESS}
       - POOL_SAFE_ADDRESS=${POOL_SAFE_ADDRESS}
       - BASE_SEPOLIA_RPC=${BASE_SEPOLIA_RPC:-https://sepolia.base.org}
-      - MINIMAX_API_KEY=${MINIMAX_API_KEY}
-      - CLAIM_EVALUATOR_URL=${CLAIM_EVALUATOR_URL}
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
       interval: 30s
