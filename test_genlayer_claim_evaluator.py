@@ -1,18 +1,34 @@
 """
 GenLayer ClaimEvaluator IC - Integration Tests
 
-These tests require a running GenLayer Bradbury testnet.
+These tests require a running GenLayer Bradbury testnet and py-genlayer SDK.
 
 Setup:
-    pip install py-genlayer
+    python -m venv .venv && source .venv/bin/activate
+    pip install py-genlayer  # requires network access to pypi.genlayer.com or PyPI
     export GENLAYER_RPC_URL=https://bradbury.genlayer.com/rpc
     export DEPLOYER_PRIVATE_KEY=0x...
+    export CLAIM_EVALUATOR_ADDRESS=0x...  # deployed IC address
 
 Run:
     python -m pytest test_genlayer_claim_evaluator.py -v
+
+Note: If Bradbury testnet is unreachable (DNS/firewall), tests will skip automatically.
 """
 
+import os
 import pytest
+
+def _check_network():
+    """Return True if Bradbury testnet is reachable."""
+    try:
+        import urllib.request
+        req = urllib.request.urlopen("https://bradbury.genlayer.com/rpc", timeout=5)
+        return req.status == 200
+    except Exception:
+        return False
+
+bradbury_reachable = _check_network()
 
 
 class TestClaimEvaluator:
@@ -21,6 +37,12 @@ class TestClaimEvaluator:
     @pytest.fixture
     def contract_address(self):
         """Return deployed ClaimEvaluator address from CLAIM_EVALUATOR_ADDRESS env."""
+        if not bradbury_reachable:
+            pytest.skip("Bradbury testnet unreachable (DNS/network issue)")
+        try:
+            import genlayer
+        except ImportError:
+            pytest.skip("py-genlayer not installed: pip install genlayer")
         import os
         addr = os.environ.get("CLAIM_EVALUATOR_ADDRESS")
         if not addr:
