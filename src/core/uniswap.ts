@@ -1,8 +1,18 @@
 import { createPublicClient, createWalletClient, http, parseUnits } from "viem";
 import { CHAIN, RPC_URL, USDC_ADDRESS } from "./config.js";
 
-const UNISWAP_V3_QUOTER = "0xb27308f9F90D607463bb33eA1BeA25e40225956f";
-const UNISWAP_V3_SWAP_ROUTER = "0xE592427A0AEce92De3Edee1F18E0157C05861564";
+const UNISWAP_V3_QUOTER: Record<number, `0x${string}`> = {
+  1: "0xb27308f9F90D607463bb33eA1BeA25e40225956f",
+  84532: "0xC5290058841028F1614F3A6F0F5816cAd0df5E27",
+  8453: "0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a",
+};
+
+const UNISWAP_V3_SWAP_ROUTER: Record<number, `0x${string}`> = {
+  1: "0xE592427A0AEce92De3Edee1F18E0157C05861564",
+  84532: "0x94cC0AaC535CCDB3C01d6787D6413C739ae12bc4",
+  8453: "0x2626664c2603336E57B271c5C0b26F421741e481",
+};
+
 const WETH_ADDRESS = "0x4200000000000000000000000000000000000006";
 
 const QUOTER_ABI = [
@@ -72,8 +82,9 @@ export async function getSwapQuote(
   const amountIn = parseUnits(String(amountInUsdc), 6);
 
   try {
+    const quoterAddress = UNISWAP_V3_QUOTER[Number(CHAIN.id)] ?? UNISWAP_V3_QUOTER[1];
     const amountOut = await publicClient.readContract({
-      address: UNISWAP_V3_QUOTER,
+      address: quoterAddress,
       abi: QUOTER_ABI,
       functionName: "quoteExactInputSingle",
       args: [{ tokenIn: USDC_ADDRESS, tokenOut, fee, amountIn, sqrtPriceLimitX96: BigInt(0) }],
@@ -102,19 +113,20 @@ export async function swapUsdcForToken(
   const publicClient = createPublicClient({ chain: CHAIN, transport: http(RPC_URL) });
 
   const amountIn = parseUnits(String(amountInUsdc), 6);
+  const routerAddress = UNISWAP_V3_SWAP_ROUTER[Number(CHAIN.id)] ?? UNISWAP_V3_SWAP_ROUTER[1];
 
   const approveHash = await walletClient.writeContract({
     address: USDC_ADDRESS,
     abi: ERC20_ABI,
     functionName: "approve",
-    args: [UNISWAP_V3_SWAP_ROUTER, amountIn],
+    args: [routerAddress, amountIn],
   });
   await publicClient.waitForTransactionReceipt({ hash: approveHash });
 
   const deadline = BigInt(Math.floor(Date.now() / 1000) + 1800);
 
   const swapHash = await walletClient.writeContract({
-    address: UNISWAP_V3_SWAP_ROUTER,
+    address: routerAddress,
     abi: SWAP_ROUTER_ABI,
     functionName: "exactInputSingle",
     args: [{ tokenIn: USDC_ADDRESS, tokenOut, fee, recipient: account.address, deadline, amountIn, amountOutMinimum: minAmountOut, sqrtPriceLimitX96: BigInt(0) }],
@@ -126,9 +138,10 @@ export async function swapUsdcForToken(
 
 export async function getUniswapPoolLiquidity(tokenIn: `0x${string}`, tokenOut: `0x${string}`, fee: number = 3000): Promise<bigint> {
   const publicClient = createPublicClient({ chain: CHAIN, transport: http(RPC_URL) });
+  const quoterAddress = UNISWAP_V3_QUOTER[Number(CHAIN.id)] ?? UNISWAP_V3_QUOTER[1];
   try {
     return await publicClient.readContract({
-      address: UNISWAP_V3_QUOTER,
+      address: quoterAddress,
       abi: QUOTER_ABI,
       functionName: "quoteExactInputSingle",
       args: [{ tokenIn, tokenOut, fee, amountIn: parseUnits("1", 6), sqrtPriceLimitX96: BigInt(0) }],
