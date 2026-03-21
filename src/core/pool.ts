@@ -12,6 +12,7 @@ import {
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { baseSepolia } from "viem/chains";
+import { CHAIN } from "./config.js";
 import type {
   ClaimCreationResult,
   PoolConfig,
@@ -21,13 +22,11 @@ import type {
 } from "./types.js";
 import { AGENTIC_COMMERCE_ABI } from "./abi.js";
 import { verifyClaimAuthorization, type ClaimSigningContext } from "./claims.js";
-
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
 export const MEMBER_STREAM_GRACE_PERIOD_MS = 7 * 24 * 60 * 60 * 1000;
 const JOB_CREATED_TOPIC = keccak256(
   stringToBytes("JobCreated(uint256,address,address,address,uint256)")
 );
-
 const ERC20_ABI = [
   {
     type: "function",
@@ -47,26 +46,21 @@ const ERC20_ABI = [
     outputs: [{ name: "", type: "uint256" }],
   },
 ] as const;
-
 function isZeroAddress(address: string): boolean {
   return address.toLowerCase() === ZERO_ADDRESS;
 }
-
 function normalizeHash(value: string): string {
   return value.startsWith("ipfs://") ? value.slice("ipfs://".length) : value;
 }
-
 function hasValidAddress(value?: `0x${string}`): value is `0x${string}` {
   return Boolean(value && !isZeroAddress(value));
 }
-
 export type StreamInfoFn = (
   rpcUrl: string,
   senderAddress: `0x${string}`,
   receiverAddress: `0x${string}`,
   superTokenAddress: `0x${string}`
 ) => Promise<{ flowRate: string; active: boolean }>;
-
 export class MutualAidPool {
   private readonly publicClient: any;
   private readonly walletClient: any;
@@ -75,14 +69,13 @@ export class MutualAidPool {
   private readonly getStreamInfoFn: StreamInfoFn;
   private members: Map<string, PoolMember> = new Map();
   private nextNonce: number | null = null;
-
   constructor(
     config: PoolConfig,
     privateKey: `0x${string}`,
     getStreamInfoFn?: StreamInfoFn
   ) {
-    if (config.chainId !== baseSepolia.id) {
-      throw new Error(`Unsupported chainId ${config.chainId}. Expected ${baseSepolia.id} (Base Sepolia).`);
+    if (![baseSepolia.id, 43113].includes(config.chainId)) {
+      throw new Error(`Unsupported chainId ${config.chainId}. Expected Base Sepolia (84532) or Avalanche Fuji (43113).`);
     }
     if (isZeroAddress(config.safeAddress)) {
       throw new Error("Pool safeAddress must be set to a non-zero address");
@@ -93,21 +86,17 @@ export class MutualAidPool {
     if (isZeroAddress(config.paymentTokenAddress)) {
       throw new Error("Pool paymentTokenAddress must be set to a non-zero address");
     }
-
     this.config = config;
     this.account = privateKeyToAccount(privateKey);
-
     this.publicClient = createPublicClient({
-      chain: baseSepolia,
+      chain: CHAIN,
       transport: http(config.rpcUrl),
     });
-
     this.walletClient = createWalletClient({
       account: this.account,
-      chain: baseSepolia,
+      chain: CHAIN,
       transport: http(config.rpcUrl),
     });
-
     this.getStreamInfoFn =
       getStreamInfoFn ??
       (async (rpcUrl, sender, receiver, token) => {
@@ -115,7 +104,6 @@ export class MutualAidPool {
         return getStreamInfo(rpcUrl, sender, receiver, token);
       });
   }
-
   addFoundingMember(address: `0x${string}`): void {
     const now = Date.now();
     this.members.set(address.toLowerCase(), {
@@ -126,7 +114,6 @@ export class MutualAidPool {
       lastStreamUpdateAt: now,
     });
   }
-
   vouchForMember(voucher: `0x${string}`, newMember: `0x${string}`): void {
     const voucherRecord = this.members.get(voucher.toLowerCase());
     if (!voucherRecord) throw new Error("Voucher is not a member");
@@ -138,11 +125,9 @@ export class MutualAidPool {
       lastStreamUpdateAt: Date.now(),
     });
   }
-
   isMember(address: `0x${string}`): boolean {
     return this.members.has(address.toLowerCase());
   }
-
   setMemberStreamStatus(address: `0x${string}`, streamActive: boolean, updatedAt: number = Date.now()): void {
     const key = address.toLowerCase();
     const member = this.members.get(key);
@@ -150,14 +135,12 @@ export class MutualAidPool {
     const graceUntil = streamActive ? undefined : updatedAt + MEMBER_STREAM_GRACE_PERIOD_MS;
     this.members.set(key, { ...member, streamActive, lastStreamUpdateAt: updatedAt, graceUntil });
   }
-
   hasClaimAccess(address: `0x${string}`, now: number = Date.now()): boolean {
     const member = this.members.get(address.toLowerCase());
     if (!member) return false;
     if (member.streamActive) return true;
     return Boolean(member.graceUntil && member.graceUntil >= now);
   }
-
   getClaimantClass(address: `0x${string}`, now: number = Date.now()): "member" | "grace" | "outsider" {
     const member = this.members.get(address.toLowerCase());
     if (!member) return "outsider";
@@ -165,13 +148,11 @@ export class MutualAidPool {
     if (member.graceUntil && member.graceUntil >= now) return "grace";
     return "outsider";
   }
-
   private isSuperfluidConfigured(): boolean {
     const host = this.config.superfluidHost ?? "0x109412E3C84f0539b43d39dB691B08c90f58dC7c";
     const token = this.config.superTokenAddress ?? "0x2C4608e5E9bEcf46096Fc4E8A4524dAF0e59954b";
     return !isZeroAddress(host) && !isZeroAddress(token);
   }
-
   async syncMemberStream(address: `0x${string}`): Promise<boolean> {
     if (!this.isSuperfluidConfigured()) return false;
     if (!this.members.has(address.toLowerCase())) return false;
@@ -186,40 +167,33 @@ export class MutualAidPool {
       return false;
     }
   }
-
   async syncAllMemberStreams(): Promise<void> {
     if (!this.isSuperfluidConfigured()) return;
     const members = Array.from(this.members.keys());
     await Promise.allSettled(members.map((addr) => this.syncMemberStream(addr as `0x${string}`)));
   }
-
   async getClaimantClassWithSync(address: `0x${string}`, now: number = Date.now()): Promise<"member" | "grace" | "outsider"> {
     await this.syncMemberStream(address);
     return this.getClaimantClass(address, now);
   }
-
   async hasClaimAccessWithSync(address: `0x${string}`, now: number = Date.now()): Promise<boolean> {
     await this.syncMemberStream(address);
     return this.hasClaimAccess(address, now);
   }
-
   async validateSignedClaimSubmission(submission: SignedClaimSubmission): Promise<boolean> {
     this.validateClaimSubmission(submission);
     const signingContext: ClaimSigningContext = { poolAddress: this.config.safeAddress, chainId: this.config.chainId };
     return verifyClaimAuthorization(submission, signingContext);
   }
-
   getMembers(): PoolMember[] {
     return Array.from(this.members.values());
   }
-
   async getPoolBalance(): Promise<bigint> {
     const balance = await this.publicClient.readContract({
       address: this.config.paymentTokenAddress, abi: ERC20_ABI, functionName: "balanceOf", args: [this.config.safeAddress],
     });
     return balance;
   }
-
   async createClaim(submission: ClaimSubmission): Promise<ClaimCreationResult> {
     this.validateClaimSubmission(submission);
     const amountWei = parseUnits(submission.amountUsd.toFixed(6), 6);
@@ -240,41 +214,34 @@ export class MutualAidPool {
     const evaluatorAddress = hasValidAddress(this.config.claimEvaluatorAddress)
       ? this.config.claimEvaluatorAddress
       : this.account.address;
-
     const createJobTx = await this.writeContract({
       address: this.config.agenticCommerceAddress, abi: AGENTIC_COMMERCE_ABI, functionName: "createJob",
       args: [submission.claimantAddress, evaluatorAddress, expiry, description],
     });
     const createReceipt = await this.publicClient.waitForTransactionReceipt({ hash: createJobTx });
     const jobId = this.extractJobId(createReceipt.logs as readonly { topics: readonly Hex[]; address: `0x${string}` }[]);
-
     const setBudgetTx = await this.writeContract({
       address: this.config.agenticCommerceAddress, abi: AGENTIC_COMMERCE_ABI, functionName: "setBudget",
       args: [jobId, amountWei],
     });
     await this.publicClient.waitForTransactionReceipt({ hash: setBudgetTx });
-
     const approveBudgetTx = await this.writeContract({
       address: this.config.paymentTokenAddress, abi: ERC20_ABI, functionName: "approve",
       args: [this.config.agenticCommerceAddress, amountWei],
     });
     await this.publicClient.waitForTransactionReceipt({ hash: approveBudgetTx });
-
     const fundJobTx = await this.writeContract({
       address: this.config.agenticCommerceAddress, abi: AGENTIC_COMMERCE_ABI, functionName: "fund",
       args: [jobId],
     });
     await this.publicClient.waitForTransactionReceipt({ hash: fundJobTx });
-
     return { jobId, txs: { createJob: createJobTx, setBudget: setBudgetTx, approveBudget: approveBudgetTx, fundJob: fundJobTx } };
   }
-
   async getJob(jobId: bigint) {
     return this.publicClient.readContract({
       address: this.config.agenticCommerceAddress, abi: AGENTIC_COMMERCE_ABI, functionName: "getJob", args: [jobId],
     });
   }
-
   async submitClaim(jobId: bigint, deliverable: string): Promise<Hash> {
     const tx = await this.writeContract({
       address: this.config.agenticCommerceAddress, abi: AGENTIC_COMMERCE_ABI, functionName: "submit",
@@ -283,7 +250,6 @@ export class MutualAidPool {
     await this.publicClient.waitForTransactionReceipt({ hash: tx });
     return tx;
   }
-
   async completeClaim(jobId: bigint, reason: string): Promise<Hash> {
     const tx = await this.writeContract({
       address: this.config.agenticCommerceAddress, abi: AGENTIC_COMMERCE_ABI, functionName: "complete",
@@ -292,7 +258,6 @@ export class MutualAidPool {
     await this.publicClient.waitForTransactionReceipt({ hash: tx });
     return tx;
   }
-
   async rejectClaim(jobId: bigint, reason: string): Promise<Hash> {
     const tx = await this.writeContract({
       address: this.config.agenticCommerceAddress, abi: AGENTIC_COMMERCE_ABI, functionName: "reject",
@@ -301,7 +266,6 @@ export class MutualAidPool {
     await this.publicClient.waitForTransactionReceipt({ hash: tx });
     return tx;
   }
-
   async claimExpiredRefund(jobId: bigint): Promise<Hash> {
     const tx = await this.writeContract({
       address: this.config.agenticCommerceAddress, abi: AGENTIC_COMMERCE_ABI, functionName: "claimRefund", args: [jobId],
@@ -309,7 +273,6 @@ export class MutualAidPool {
     await this.publicClient.waitForTransactionReceipt({ hash: tx });
     return tx;
   }
-
   private extractJobId(logs: readonly { topics: readonly Hex[]; address: `0x${string}` }[]): bigint {
     for (const log of logs) {
       if (log.address.toLowerCase() !== this.config.agenticCommerceAddress.toLowerCase()) continue;
@@ -318,44 +281,38 @@ export class MutualAidPool {
     }
     throw new Error("JobCreated event not found in transaction receipt");
   }
-
   private validateClaimSubmission(submission: ClaimSubmission): void {
     if (!Number.isFinite(submission.amountUsd) || submission.amountUsd <= 0) throw new Error("Claim amountUsd must be a positive number");
     if (!submission.description.trim()) throw new Error("Claim description is required");
     if (!submission.evidenceIpfsHash.trim()) throw new Error("Claim evidenceIpfsHash is required");
   }
-
   private toBytes32(value: string): Hex {
     const normalized = value.trim() || "n/a";
     const truncated = normalized.length > 31 ? normalized.slice(0, 31) : normalized;
     return padHex(stringToHex(truncated), { size: 32 });
   }
-
   private async getTokenBalance(address: `0x${string}`): Promise<bigint> {
     return this.publicClient.readContract({
       address: this.config.paymentTokenAddress, abi: ERC20_ABI, functionName: "balanceOf", args: [address],
     });
   }
-
   private async refreshNonce(): Promise<number> {
     const nonce = await this.publicClient.getTransactionCount({ address: this.account.address, blockTag: "pending" });
     this.nextNonce = nonce;
     return nonce;
   }
-
   private isNonceSyncError(error: unknown): boolean {
     if (!(error instanceof Error)) return false;
     const message = error.message.toLowerCase();
     return message.includes("nonce too low") || message.includes("nonce has already been used");
   }
-
   private async writeContract(request: {
     address: `0x${string}`; abi: readonly unknown[]; functionName: string; args: readonly unknown[];
   }): Promise<Hash> {
     for (let attempt = 0; attempt < 3; attempt++) {
       const nonce = this.nextNonce ?? (await this.refreshNonce());
       try {
-        const hash = await this.walletClient.writeContract({ chain: baseSepolia, nonce, ...request });
+        const hash = await this.walletClient.writeContract({ chain: CHAIN, nonce, ...request });
         this.nextNonce = nonce + 1;
         return hash;
       } catch (error) {

@@ -1,14 +1,23 @@
 # Mutual Aid Pool
 
-Agent-managed mutual aid fund using **ERC-8183**, **ERC-8004**, **Safe multisig**, and **Superfluid** on **Base Sepolia**.
+Agent-managed mutual aid fund using **ERC-8183**, **ERC-8004**, **Safe multisig**, and **Superfluid** / **x402** on **Base Sepolia** and **Avalanche Fuji**.
 
 ## Stack
 
-- **Contracts**: ERC-8183 (AgenticCommerce), Safe Module, Superfluid USDCx
-- **Chain**: Base Sepolia
+- **Contracts**: ERC-8183 (AgenticCommerce), Safe multisig treasury
+- **Chains**: Base Sepolia (development) + Avalanche Fuji (hackathon track)
+- **Payments**: x402 HTTP payment protocol on Avalanche; Superfluid USDCx on Base
+- **Identity**: ERC-8004 trustless agent registry
+- **AI**: MiniMax M2.5 claim evaluation via autonomous AI agent
 - **Language**: TypeScript (Node.js)
 - **Test**: Vitest + Playwright E2E
 - **Container**: Docker + docker-compose
+
+## Supported Hackathon Tracks
+
+- **PL_Genesis + Crecimiento** — social impact, crypto + AI
+- **Avalanche** — ERC-8004 + x402 payment protocol for AI agents
+- **GenLayer** — AI consensus evaluation (Intelligent Contract)
 
 ## Quick Start
 
@@ -17,18 +26,27 @@ cp .env.example .env  # fill in keys
 npm install
 npm run build
 npm run test
-npm run demo
+```
+
+### Avalanche Track Setup
+
+```bash
+export CHAIN_NAME=avalanche-fuji
+export AVALANCHE_FUJI_RPC=https://api.avax-test.network/ext/bc/C/rpc
+export AGENTIC_COMMERCE_ADDRESS=<deployed address>
+export POOL_SAFE_ADDRESS=<deployed address>
 ```
 
 ## Deploy
 
 ```bash
-# Deploy ERC-8183 + Safe
-npx tsx src/deploy/deploy-all.ts
-
-# Or step by step
+# Base Sepolia
 npx hardhat run scripts/deploy-agentic-commerce.ts
-npx tsx src/deploy/create-safe.ts
+npm run deploy:safe
+
+# Avalanche Fuji (set CHAIN_NAME=avalanche-fuji first)
+export CHAIN_NAME=avalanche-fuji
+npx hardhat run scripts/deploy-agentic-commerce.ts --network avalanche-fuji
 ```
 
 ## CLI
@@ -48,18 +66,19 @@ npx tsx src/cli/index.ts serve --port 3000
 
 ## Architecture
 
-- `src/core/pool.ts` — MutualAidPool class (claims, streams, multisig)
-- `src/core/claims.ts` — Claim authorization message signing/verification
-- `src/core/streaming.ts` — Superfluid stream management
-- `src/agent/evaluator.ts` — MiniMax M2.5 claim evaluation
-- `src/deploy/` — Deployment scripts
+- `src/core/pool.ts` — MutualAidPool (ERC-8183 claims, Safe multisig, stream sync)
+- `src/core/claims.ts` — Claim authorization signing/verification
+- `src/core/streaming.ts` — Superfluid USDCx stream management
+- `src/core/config.ts` — Multi-chain config (Base Sepolia + Avalanche Fuji)
+- `src/agent/evaluator.ts` — MiniMax M2.5 AI claim evaluation
+- `src/deploy/` — Deployment scripts for both chains
 - `scripts/` — Verification and cleanup scripts
-- `test/` — Unit and E2E tests
+- `test/` — Unit (25 tests) and E2E tests
 
 ## Testing
 
 ```bash
-npm run test          # unit tests
+npm run test           # unit tests (25 passing)
 npm run test:e2e      # Playwright E2E tests
 npm run lint && npm run test && npm run build  # full verification
 ```
