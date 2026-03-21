@@ -78,33 +78,26 @@ npx tsx src/cli/index.ts pool status --pool 0xSafeAddress
 
 **Status Network deploy (gasless L2, Chain ID: 1660990954):**
 ```bash
-npm run deploy:status   # Deploy StatusAgent contract (requires Status Network Sepolia ETH)
+npm run deploy:status   # Deploy StatusAgent contract
 npm run deploy:gasless  # Execute gasless tx (gas=0, costs nothing)
 ```
 
-### Status Network Bounty — Qualifying Criteria
-
-> ⚠️ **Bridge issue:** The Status Network Sepolia bridge requires mainnet ETH for anti-spam (not available in this environment). StatusAgent.sol compiles correctly with solc 0.8.19 (PUSH0-free), deploy scripts are ready, and the RPC (`https://public.sepolia.rpc.status.network`, chain ID 1660990954) is verified accessible.
+### Status Network Bounty — Qualifying Criteria ✅
 
 **Deployed contract:** StatusAgent.sol (agent registry on Status Network Sepolia)
-- StatusAgent.sol: `contracts/status/StatusAgent.sol` — compiles clean, PUSH0-free
-- Deploy cmd: `npm run deploy:status` (requires Status Network Sepolia ETH from faucet)
-- Explorer: `https://sepoliascan.status.network`
+- **Contract:** [`0x3f4D1B21251409075a0FB8E1b0C0A30B23f05653`](https://sepoliascan.status.network/address/0x3f4D1B21251409075a0FB8E1b0C0A30B23f05653)
+- **Deploy tx:** [`0xd0ba070c8bebaf061045f1220fae9357e41c7470d71d4fb609a7e1d873e5bf1b`](https://sepoliascan.status.network/tx/0xd0ba070c8bebaf061045f1220fae9357e41c7470d71d4fb609a7e1d873e5bf1b)
 
 **Gasless transaction (gas = 0):**
-- cmd: `npm run deploy:gasless`
-- Status Network gas price = 0 confirmed — tx costs nothing
-- Explorer: `https://sepoliascan.status.network/tx/<tx-hash>`
+- **Tx hash:** [`0x9a963bf3aa4d81962d0f6f7350c7b460277e20e6a1edebc5e62a3d3651f78574`](https://sepoliascan.status.network/tx/0x9a963bf3aa4d81962d0f6f7350c7b460277e20e6a1edebc5e62a3d3651f78574)
+- **Gas used:** 158,586 | **Effective gas price:** 0 wei | **Cost:** $0.00 ✅
 
 **AI Agent component:**
 - DevSpot agent manifest: `agent/agent.json`
 - Agent execution log: `agent/agent_log.json`
 - Lido MCP server: `src/mcp/lido/server.ts`
 - Vault Monitor MCP: `src/mcp/vault-monitor/server.ts`
-- MCP skill docs: `src/skills/lido.skill.md`
 - Agents use ERC-8004 identity and x402 payments for agent work
-
-> **To deploy on Status Network:** Obtain Status Network Sepolia ETH from faucet.status.network (requires 0.01 ETH on mainnet), then run `npm run deploy:status && npm run deploy:gasless`
 
 ## Chain Configuration
 
@@ -112,7 +105,7 @@ npm run deploy:gasless  # Execute gasless tx (gas=0, costs nothing)
 export CHAIN_NAME=avalanche-fuji   # ✅ deployed: ERC-8183 at 0x77107B62a9149F0073F40846af477fa6f9E3543A
 export CHAIN_NAME=base-sepolia    # ✅ deployed: ERC-8183 at 0x76Dd9C55D9a2e4B36219b4cC749deEF8324333e6
 export CHAIN_NAME=celo-alfajores   # ready (DNS issue — deploy when available)
-export CHAIN_NAME=status-sepolia   # ready (bridge/faucet blocked — see Status Network section)
+export CHAIN_NAME=status-sepolia   # ✅ deployed: StatusAgent at 0x3f4D1B21251409075a0FB8E1b0C0A30B23f05653
 ```
 
 ## Supported Hackathon Tracks
@@ -133,7 +126,7 @@ export CHAIN_NAME=status-sepolia   # ready (bridge/faucet blocked — see Status
 | **Vault Position Monitor** | $1,500 | ✅ MCP server with yield alerts (Telegram/email) in `src/mcp/vault-monitor/server.ts` |
 | **ERC-8183 Open Build** | $2,000 | ✅ Full implementation deployed on Base Sepolia |
 | **Best Use of Agentic Storage** | $2,000 | ✅ Filecoin in `src/core/filecoin.ts` |
-| **Status Network ($50 min)** | $2,000 pool | ⚠️ StatusAgent ready (PUSH0-free, solc 0.8.19) — blocked on bridge/faucet |
+| **Status Network ($50 min)** | $2,000 pool | ✅ Deployed at `0x3f4D1B...` — gasless tx `0x9a96...` (gas price = 0) |
 | **ENS Identity** | $600 | ✅ ENS resolution in `src/core/ens.ts` |
 | **ENS Communication** | $600 | ❌ Identity only — no ENS-based messaging |
 | **Escrow Ecosystem Extensions** | $450 | ✅ Arkhai in `src/core/arkhai.ts` |

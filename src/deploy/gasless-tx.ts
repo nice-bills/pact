@@ -1,4 +1,4 @@
-import { createWalletClient, createPublicClient, http, encodeFunctionData, parseUnits } from "viem";
+import { createWalletClient, createPublicClient, http, encodeFunctionData } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 
 const RPC = process.env.STATUS_L2_RPC ?? "https://public.sepolia.rpc.status.network";
@@ -35,7 +35,7 @@ async function main() {
   const publicClient = createPublicClient({ chain: STATUS_L2, transport: http(RPC) });
   const walletClient = createWalletClient({ account, chain: STATUS_L2, transport: http(RPC) });
 
-  console.log("=== Status Network Sepolia — Gasless Transaction Test ===\n");
+  console.log("=== Status Network Sepolia — Gasless Transaction ===\n");
   console.log(`Contract: ${STATUS_AGENT_ADDRESS}`);
   console.log(`Caller: ${account.address}`);
 
@@ -50,21 +50,12 @@ async function main() {
   }) as bigint;
   console.log(`\n2. Agent count before: ${countBefore}`);
 
-  console.log("\n3. Sending gasless registration transaction (gas = 0)...");
-  console.log(`   Setting gas to 0 wei — this transaction costs NOTHING on Status Network`);
-
-  const callData = encodeFunctionData({
-    abi: AGENT_ABI,
-    functionName: "register",
-    args: ["DevSpot-Agent"],
-  });
-
+  console.log("\n3. Sending registration with gas price = 0...");
   const hash = await walletClient.writeContract({
     address: STATUS_AGENT_ADDRESS as `0x${string}`,
     abi: AGENT_ABI,
     functionName: "register",
     args: ["DevSpot-Agent"],
-    gas: 0n,
     maxFeePerGas: 0n,
     maxPriorityFeePerGas: 0n,
   });
@@ -87,8 +78,9 @@ async function main() {
     }) as bigint;
     console.log(`\n5. Agent count after: ${countAfter}`);
     console.log("\n✅ GASLESS TRANSACTION PROOF:");
-    console.log(`   https://sepoliascan.status.network/tx/${hash}`);
-    console.log(`   (gas = 0, effectiveGasPrice = 0)`);
+    console.log(`   Tx: https://sepoliascan.status.network/tx/${hash}`);
+    console.log(`   Contract: https://sepoliascan.status.network/address/${STATUS_AGENT_ADDRESS}`);
+    console.log(`   Effective gas price = ${receipt.effectiveGasPrice} wei (0 cost)`);
   }
 }
 
