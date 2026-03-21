@@ -74,6 +74,14 @@
       "reasoning": "MetaMask Delegation Framework bounty values sub-delegations, ERC-7715 setPermissions for granular function-level control. Added delegateWithERC7715Permissions(), subDelegate(), buildClaimPermission(), buildPoolPermission().",
       "toolCalls": ["walletClient.writeContract", "setPermissions"],
       "outcome": "Created src/core/delegation.ts with full ERC-7715 support."
+    },
+    {
+      "timestamp": "2026-03-21T14:35:00Z",
+      "action": "uniswap_swap",
+      "input": "Execute real USDC → WETH swap on Base Sepolia for Uniswap API bounty",
+      "reasoning": "Uniswap bounty requires real swap with TxID on testnet or mainnet. USDC faucet delivered 20 USDC to deployer. Pool exists at 0x46880b404cd35c165eddeff7421019f8dd25f4ad (USDC/WETH 3000 fee). Quoter call reverted (no liquidity via view call), but router call succeeded.",
+      "toolCalls": ["approve", "exactInputSingle"],
+      "outcome": "Swap 1 USDC for ~0.0003 WETH. Tx: 0x6bcc8a14256a60be604950a9a68fe4aea73199a30c386ef3b38cae6ea1d6e430. Explorer: https://sepolia.basescan.org/tx/0x6bcc8a14256a60be604950a9a68fe4aea73199a30c386ef3b38cae6ea1d6e430"
     }
   ],
   "toolCallLog": [
@@ -81,7 +89,9 @@
     { "tool": "viem:createWalletClient", "count": 15 },
     { "tool": "viem:readContract", "count": 32 },
     { "tool": "viem:writeContract", "count": 5, "chains": ["status-sepolia"] },
-    { "tool": "McpServer.tool", "count": 11 }
+    { "tool": "McpServer.tool", "count": 11 },
+    { "tool": "uniswap_v3:approve", "count": 1, "chains": ["base-sepolia"] },
+    { "tool": "uniswap_v3:exactInputSingle", "count": 1, "chains": ["base-sepolia"] }
   ],
   "failures": [
     {
