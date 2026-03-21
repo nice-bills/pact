@@ -93,7 +93,7 @@ export class MutualAidPool {
       });
   }
   get address(): `0x${string}` {
-    return this.account.address;
+    return this.account.address as `0x${string}`;
   }
   addFoundingMember(address: `0x${string}`): void {
     const now = Date.now();
@@ -190,7 +190,7 @@ export class MutualAidPool {
   async createClaim(submission: ClaimSubmission): Promise<ClaimCreationResult> {
     this.validateClaimSubmission(submission);
     const amountWei = parseUnits(submission.amountUsd.toFixed(6), 6);
-    const walletBalance = await this.getTokenBalance(this.account.address);
+    const walletBalance = await this.getTokenBalance(this.account.address as `0x${string}`);
     if (walletBalance < amountWei) {
       throw new Error(`Insufficient claim funding balance. Required ${amountWei.toString()} token units, wallet has ${walletBalance.toString()}.`);
     }

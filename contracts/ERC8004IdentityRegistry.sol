@@ -13,6 +13,7 @@ contract ERC8004IdentityRegistry is IERC8004 {
     mapping(uint96 => address) public agents;
     mapping(address => uint96) public identityToAgent;
     mapping(bytes32 => bool) public usedSeeds;
+    mapping(uint96 => uint256) public registeredAt;
 
     function registerAgent(bytes32 agentSeed) external returns (uint96 agentId) {
         require(!usedSeeds[agentSeed], "Seed already used");
@@ -22,14 +23,15 @@ contract ERC8004IdentityRegistry is IERC8004 {
         agentId = nextAgentId++;
         agents[agentId] = msg.sender;
         identityToAgent[msg.sender] = agentId;
+        registeredAt[agentId] = block.timestamp;
 
         emit AgentRegistered(agentId, msg.sender, agentSeed);
     }
 
-    function getAgent(uint96 agentId) external view returns (address agentAddress, uint96 parentId, uint256 registeredAt) {
+    function getAgent(uint96 agentId) external view returns (address agentAddress, uint96 parentId, uint256 regAt) {
         agentAddress = agents[agentId];
         parentId = 0;
-        registeredAt = 0;
+        regAt = registeredAt[agentId];
     }
 
     function resolveIdentity(address identity) external view returns (uint96 agentId) {

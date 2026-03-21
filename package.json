@@ -8,9 +8,10 @@
     "dev": "tsx watch src/index.ts",
     "lint": "tsc --noEmit",
     "test": "vitest run",
+    "test:sol": "forge test",
     "test:e2e": "playwright test",
     "demo": "tsx src/demo/run-demo.ts",
-    "serve": "tsx src/cli/index.ts serve",
+    "serve": "tsx src/cli/commands/serve.ts",
     "verify": "tsx scripts/verify.ts",
     "cleanup": "tsx scripts/cleanup.ts",
     "demo:fresh": "tsx src/demo/run-demo.ts",
@@ -35,10 +36,13 @@
     "vitest": "^4.1.0"
   },
   "devDependencies": {
+    "@nomicfoundation/hardhat-chai-matchers": "^3.0.0",
     "@nomicfoundation/hardhat-viem": "^3.0.4",
     "@openzeppelin/contracts": "^5.6.1",
     "@playwright/test": "^1.50.0",
+    "chai": "^6.2.2",
     "dotenv": "^17.3.1",
+    "forge-std": "^1.1.2",
     "hardhat": "^3.1.12"
   }
 }

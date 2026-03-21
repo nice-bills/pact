@@ -1,23 +1,27 @@
 import { createServer } from "http";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
 
-export async function serve(opts: { port: number }): Promise<void> {
-  const addr = `0.0.0.0:${opts.port}`;
-  const server = createServer((req, res) => {
-    if (req.url === "/health") {
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ status: "ok", service: "mutual-aid-pool" }));
-      return;
-    }
-    res.writeHead(404);
-    res.end();
-  });
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
-  server.listen(addr, () => {
-    console.log(`Mutual Aid Pool server running on http://${addr}`);
-  });
+const PORT = parseInt(process.argv[process.argv.length - 1], 10) || 3000;
 
-  process.on("SIGINT", () => {
-    server.close();
-    process.exit(0);
-  });
-}
+const server = createServer((req, res) => {
+  if (req.url === "/health") {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ status: "ok", service: "mutual-aid-pool" }));
+    return;
+  }
+  res.writeHead(404);
+  res.end();
+});
+
+server.listen(PORT, () => {
+  console.log(`Mutual Aid Pool server running on http://0.0.0.0:${PORT}`);
+});
+
+process.on("SIGINT", () => {
+  server.close();
+  process.exit(0);
+});

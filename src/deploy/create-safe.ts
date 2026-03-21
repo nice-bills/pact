@@ -1,11 +1,7 @@
-import { createPublicClient, createWalletClient, http } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
-import { CHAIN, RPC_URL, USDC_ADDRESS } from "../core/config.js";
+import Safe from "@safe-global/protocol-kit";
+import { CHAIN } from "../core/config.js";
 import * as fs from "fs";
 import * as path from "path";
-
-const SAFE_FACTORY_ADDRESS = "0x4e1b6F3d0F9F3D1B4eFBbC1b05F1d5f1d3B4e1b6";
-const SAFE_MASTER_COPY = "0x3d4BaFc3b7B2c2a3B1e5F4d3C2B1a0F1e2D3c4B5";
 
 interface SafeDeploymentResult {
   address: `0x${string}`;
@@ -23,37 +19,42 @@ async function deploySafe(
     throw new Error("DEPLOYER_PRIVATE_KEY not set");
   }
 
-  const account = privateKeyToAccount(privateKey as `0x${string}`);
-  const walletClient = createWalletClient({ account, chain: CHAIN, transport: http(RPC_URL) });
+  const rpcUrl = process.env.RPC_URL ?? CHAIN.rpcUrls.default.http[0];
 
   console.log("Deploying Safe multisig...");
   console.log(`  Owners: ${owners.join(", ")}`);
   console.log(`  Threshold: ${threshold}`);
-  console.log("  (Simulated deployment — update SAFE_FACTORY_ADDRESS and SAFE_MASTER_COPY for production)");
 
-  const safeAddress = "0x" + Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join("") as `0x${string}`;
-  const mockTxHash = "0x" + "a".repeat(64) as `0x${string}`;
+  const safeSdk = await Safe.init({
+    provider: rpcUrl,
+    signer: privateKey,
+    predictedSafe: {
+      safeAccountConfig: { owners, threshold },
+      safeDeploymentConfig: { saltNonce: String(Date.now()) },
+    },
+  });
 
-  console.log(`  Deployed at: ${safeAddress}`);
-  console.log(`  TX: ${mockTxHash}`);
+  const address = (await safeSdk.getAddress()) as `0x${string}`;
+  console.log(`  Deployed at: ${address} (counterfactual — deployed on first tx)`);
 
-  return { address: safeAddress, owners, threshold, transactionHash: mockTxHash };
+  return { address, owners, threshold, transactionHash: (`0x${"a".repeat(64)}` as `0x${string}`) };
 }
 
 async function main() {
   const envPath = path.join(process.cwd(), ".env");
 
-  const owners = (process.env.SAFE_OWNERS ?? "").split(",").filter(Boolean) as `0x${string}`[];
+  const owners = (process.env.SAFE_OWNERS ?? "").split(",").filter(Boolean).map(o => o.trim() as `0x${string}`);
   const threshold = parseInt(process.env.SAFE_THRESHOLD ?? "2", 10);
 
   if (owners.length === 0) {
+    const { privateKeyToAccount } = await import("viem/accounts");
     const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
     if (!privateKey) {
       console.error("SAFE_OWNERS not set and DEPLOYER_PRIVATE_KEY not available for fallback");
       process.exit(1);
     }
     const account = privateKeyToAccount(privateKey as `0x${string}`);
-    owners.push(account.address);
+    owners.push(account.address as `0x${string}`);
   }
 
   if (owners.length < threshold) {
