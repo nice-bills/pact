@@ -5,3 +5,10 @@ dist/
 *.log
 artifacts/
 cache/
+
+# Generated test/report artifacts
+playwright-report/
+playwright-results.json
+test-results/
+out/
+genlayer/__pycache__/
