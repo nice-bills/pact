@@ -47,7 +47,24 @@ npm run deploy:safe
 # Avalanche Fuji (set CHAIN_NAME=avalanche-fuji first)
 export CHAIN_NAME=avalanche-fuji
 npx hardhat run scripts/deploy-agentic-commerce.ts --network avalanche-fuji
+
+# GenLayer Bradbury (Python IC)
+pip install py-genlayer
+genlayer network testnet-bradbury
+python scripts/deploy_genlayer_ic.py --owner <address> --min-confidence 50
 ```
+
+## GenLayer Track
+
+The **GenLayer Intelligent Contract** (`genlayer/ClaimEvaluator.py`) provides AI consensus-based claim evaluation on Bradbury testnet.
+
+- **Equivalence Principle**: leader/validator pattern — validators agree on `approve/reject` verdict but reasoning may differ
+- **LLM consensus**: `gl.nondet.exec_prompt` + `gl.vm.run_nondet_unsafe` for non-deterministic evaluation
+- **JSON output**: strict parsing with regex fallback on malformed responses
+- **Deployment**: `python scripts/deploy_genlayer_ic.py`
+- **Integration**: Set `CLAIM_EVALUATOR_ADDRESS` after deployment; TypeScript evaluator proxies via `CLAIM_EVALUATOR_URL`
+
+See [`genlayer/README.md`](genlayer/README.md) for full details.
 
 ## CLI
 
@@ -70,8 +87,10 @@ npx tsx src/cli/index.ts serve --port 3000
 - `src/core/claims.ts` — Claim authorization signing/verification
 - `src/core/streaming.ts` — Superfluid USDCx stream management
 - `src/core/config.ts` — Multi-chain config (Base Sepolia + Avalanche Fuji)
-- `src/agent/evaluator.ts` — MiniMax M2.5 AI claim evaluation
+- `src/agent/evaluator.ts` — MiniMax M2.5 AI claim evaluation (with GenLayer IC fallback)
 - `src/deploy/` — Deployment scripts for both chains
+- `genlayer/ClaimEvaluator.py` — GenLayer Intelligent Contract (Python, Bradbury testnet)
+- `scripts/deploy_genlayer_ic.py` — GenLayer IC deployment script
 - `scripts/` — Verification and cleanup scripts
 - `test/` — Unit (25 tests) and E2E tests
 
