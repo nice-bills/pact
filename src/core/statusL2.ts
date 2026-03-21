@@ -2,7 +2,7 @@ import { defineChain } from "viem";
 
 export const STATUS_L2 = defineChain({
   id: 24484,
-  name: "Status IM L2",
+  name: "Status L2",
   network: "status-l2",
   nativeCurrency: {
     decimals: 18,
@@ -11,7 +11,7 @@ export const STATUS_L2 = defineChain({
   },
   rpcUrls: {
     default: {
-      http: ["https://rpc.status.network"],
+      http: [process.env.STATUS_L2_RPC ?? "https://rpc.status.im"],
     },
   },
   blockExplorers: {
@@ -25,8 +25,8 @@ export const STATUS_L2 = defineChain({
 export const STATUS_L2_CONFIG = {
   chain: STATUS_L2,
   id: STATUS_L2.id,
-  rpc: process.env.STATUS_L2_RPC ?? "https://rpc.status.network",
-  usdc: "0x", 
+  rpc: process.env.STATUS_L2_RPC ?? "https://rpc.status.im",
+  usdc: "0x0000000000000000000000000000000000000000",
   explorer: "https://explorer.status.network",
   x402Enabled: true,
   erc8004: "0x00000000000000000000000000000000008004" as const,
