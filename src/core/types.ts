@@ -2,22 +2,27 @@ export interface PoolConfig {
   safeAddress: `0x${string}`;
   agenticCommerceAddress: `0x${string}`;
   paymentTokenAddress: `0x${string}`;
+  claimEvaluatorAddress?: `0x${string}`;
   chainId: number;
   rpcUrl: string;
-  threshold: number; // multisig threshold (e.g. 2 of 3)
+  threshold: number;
   monthlyContributionUsd: number;
+  superfluidHost?: `0x${string}`;
+  superTokenAddress?: `0x${string}`;
 }
 
 export interface PoolMember {
   address: `0x${string}`;
-  vouchedBy: `0x${string}` | null; // null = founding member
+  vouchedBy: `0x${string}` | null;
   joinedAt: number;
   streamActive: boolean;
+  lastStreamUpdateAt: number;
+  graceUntil?: number;
   erc8004AgentId?: bigint;
 }
 
 export interface Claim {
-  id: number; // ERC-8183 jobId
+  id: bigint;
   claimant: `0x${string}`;
   amountRequested: bigint;
   evidenceIpfsHash: string;
@@ -25,7 +30,7 @@ export interface Claim {
   isMember: boolean;
   status: ClaimStatus;
   agentRecommendation?: AgentRecommendation;
-  createdAt: number;
+  createdAt?: number;
   expiredAt: number;
 }
 
@@ -39,7 +44,7 @@ export type ClaimStatus =
 
 export interface AgentRecommendation {
   approve: boolean;
-  confidence: number; // 0-100
+  confidence: number;
   reasoning: string;
   evaluatedAt: number;
 }
@@ -49,4 +54,22 @@ export interface ClaimSubmission {
   amountUsd: number;
   evidenceIpfsHash: string;
   description: string;
+}
+
+export interface SignedClaimSubmission extends ClaimSubmission {
+  signedAt: number;
+  nonce: string;
+  signature: `0x${string}`;
+}
+
+export interface ClaimLifecycleTxs {
+  createJob: `0x${string}`;
+  setBudget: `0x${string}`;
+  approveBudget?: `0x${string}`;
+  fundJob: `0x${string}`;
+}
+
+export interface ClaimCreationResult {
+  jobId: bigint;
+  txs: ClaimLifecycleTxs;
 }

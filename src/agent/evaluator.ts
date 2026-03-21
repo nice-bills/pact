@@ -1,8 +1,9 @@
 import type { AgentRecommendation, ClaimSubmission } from "../core/types.js";
 
 const MINIMAX_API_URL = "https://api.minimax.io/v1/text/chatcompletion_v2";
+const FALLBACK_EVALUATOR_URL = process.env.CLAIM_EVALUATOR_URL;
 
-const SYSTEM_PROMPT = `You are an insurance claim evaluator for a mutual aid pool. 
+const SYSTEM_PROMPT = `You are an insurance claim evaluator for a mutual aid pool.
 Your job is to assess whether a claim for emergency funds is legitimate.
 
 You will receive:
@@ -36,7 +37,48 @@ export async function evaluateClaim(
     `Please evaluate this claim and respond in JSON format.`,
   ].join("\n");
 
+  const messages = [
+    { role: "system" as const, content: SYSTEM_PROMPT },
+    { role: "user" as const, content: userMessage },
+  ];
+
   try {
+    if (FALLBACK_EVALUATOR_URL) {
+      const response = await fetch(FALLBACK_EVALUATOR_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: "MiniMax-M2.5",
+          messages,
+          temperature: 0.1,
+          max_tokens: 500,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Evaluator URL error: ${response.status}`);
+      }
+
+      const data = await response.json() as any;
+      const content = data.choices?.[0]?.message?.content ?? "";
+
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error(`Could not parse JSON from evaluator response: ${content}`);
+      }
+
+      const parsed = JSON.parse(jsonMatch[0]);
+      return {
+        approve: Boolean(parsed.approve),
+        confidence: Number(parsed.confidence) || 50,
+        reasoning: String(parsed.reasoning || "No reasoning provided"),
+        evaluatedAt: Date.now(),
+      };
+    }
+
     const response = await fetch(MINIMAX_API_URL, {
       method: "POST",
       headers: {
@@ -44,11 +86,8 @@ export async function evaluateClaim(
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: "MiniMax-M1",
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: userMessage },
-        ],
+        model: "MiniMax-M2.5",
+        messages,
         temperature: 0.1,
         max_tokens: 500,
       }),

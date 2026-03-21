@@ -22,13 +22,11 @@ const poolConfig: PoolConfig = {
 async function main() {
   console.log("=== Mutual Aid Pool Demo ===\n");
 
-  // 1. Initialize pool
   const pool = new MutualAidPool(poolConfig, DEMO_PRIVATE_KEY);
   console.log("1. Pool initialized");
   console.log(`   Safe: ${poolConfig.safeAddress}`);
   console.log(`   ERC-8183: ${poolConfig.agenticCommerceAddress}\n`);
 
-  // 2. Add founding members
   const alice = "0x1111111111111111111111111111111111111111" as `0x${string}`;
   const bob = "0x2222222222222222222222222222222222222222" as `0x${string}`;
   const carlos = "0x3333333333333333333333333333333333333333" as `0x${string}`;
@@ -39,7 +37,6 @@ async function main() {
   console.log("2. Founding members added: Alice, Bob, Carlos");
   console.log(`   Members: ${pool.getMembers().length}\n`);
 
-  // 3. Check pool balance
   try {
     const balance = await pool.getPoolBalance();
     console.log(`3. Pool balance: ${balance} (raw USDC units)\n`);
@@ -47,7 +44,6 @@ async function main() {
     console.log("3. Pool balance: (skipped - Safe not yet deployed)\n");
   }
 
-  // 4. Submit a claim from Maria (outsider)
   const mariaClaim: ClaimSubmission = {
     claimantAddress: "0x4444444444444444444444444444444444444444" as `0x${string}`,
     amountUsd: 80,
@@ -60,10 +56,9 @@ async function main() {
   console.log(`   Evidence: ${mariaClaim.evidenceIpfsHash}`);
   console.log(`   Is member: ${pool.isMember(mariaClaim.claimantAddress)}\n`);
 
-  // 5. Agent evaluates claim
   const apiKey = process.env.MINIMAX_API_KEY ?? "";
   if (apiKey) {
-    console.log("5. Agent evaluating claim via MiniMax M2...");
+    console.log("5. Agent evaluating claim via MiniMax M2.5...");
     const recommendation = await evaluateClaim(mariaClaim, apiKey);
     console.log(`   Approve: ${recommendation.approve}`);
     console.log(`   Confidence: ${recommendation.confidence}%`);
@@ -72,7 +67,6 @@ async function main() {
     console.log("5. Agent evaluation skipped (no MINIMAX_API_KEY)\n");
   }
 
-  // 6. Multisig approval (simulated)
   console.log("6. Multisig approval");
   console.log("   Alice: APPROVED");
   console.log("   Bob: APPROVED");
