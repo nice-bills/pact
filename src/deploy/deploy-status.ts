@@ -4,7 +4,6 @@ import * as path from "path";
 import { execSync } from "child_process";
 
 const RPC = process.env.STATUS_L2_RPC ?? "https://public.sepolia.rpc.status.network";
-const CHAIN_ID = 1_660_990_954;
 
 async function main() {
   const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
@@ -14,17 +13,20 @@ async function main() {
   }
 
   const deployer = privateKeyToAccount(privateKey as `0x${string}`);
-  console.log(`Deploying to Status Network Sepolia (Chain ID: ${CHAIN_ID})`);
+  console.log(`Deploying to Status Network Sepolia (Chain ID: 1660990954)`);
   console.log(`RPC: ${RPC}`);
   console.log(`Deployer: ${deployer.address}`);
 
   try {
-    console.log("\n1. Building contracts...");
-    execSync("forge build --contracts contracts/status/", { encoding: "utf-8", stdio: "inherit" });
+    console.log("\n1. Building StatusAgent with solc 0.8.19 (no PUSH0)...");
+    execSync(
+      "forge build --contracts contracts/status/ --use solc:0.8.19",
+      { encoding: "utf-8", stdio: "inherit" }
+    );
 
     console.log("\n2. Deploying StatusAgent...");
     const output = execSync(
-      `forge create --rpc-url "${RPC}" --chain-id ${CHAIN_ID} --private-key ${privateKey} contracts/status/StatusAgent.sol:StatusAgent --json`,
+      `forge create --rpc-url "${RPC}" --private-key ${privateKey} --contracts contracts/status/ --use solc:0.8.19 contracts/status/StatusAgent.sol:StatusAgent --json`,
       { encoding: "utf-8" }
     );
     const result = JSON.parse(output);
@@ -63,6 +65,8 @@ async function main() {
     }
     fs.writeFileSync(envPath, envContent.trim() + "\n");
     console.log("\nUpdated .env with STATUS_AGENT_ADDRESS");
+    console.log("\n3. Executing gasless registration transaction...");
+    console.log(`   Run: npm run deploy:gasless`);
   } catch (err) {
     console.error(`Deploy error: ${err}`);
     process.exit(1);
