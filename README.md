@@ -115,7 +115,7 @@ export CHAIN_NAME=status-sepolia   # ✅ deployed: StatusAgent at 0x3f4D1B212514
 | **Synthesis Open Track** | $28,134 | ✅ Qualifies — full stack implemented |
 | **Best Agent on Celo** | $5,000 | Celo Alfajores configured (DNS issue — deploy when RPC available) |
 | **Best Use of Delegations** | $5,000 | ✅ ERC-7715 + sub-delegations + granular permissions in `src/core/delegation.ts` |
-| **Agentic Finance (Uniswap API)** | $5,000 | ⚠️ Full implementation in `src/core/uniswap.ts` — no testnet pool liquidity (Base/Avalanche Fuji lack ETH/USDC pools) |
+| **Agentic Finance (Uniswap API)** | $5,000 | ✅ Swap on Base Sepolia: [`0x6bcc8a...`](https://sepolia.basescan.org/tx/0x6bcc8a14256a60be604950a9a68fe4aea73199a30c386ef3b38cae6ea1d6e430) — 1 USDC → WETH, pool at `0x46880b...` |
 | **Agent Services on Base** | $5,000 | ✅ Deployed on Base Sepolia: `0x76Dd9C...` |
 | **Ship Something Real with OpenServ** | $4,500 | ✅ `executeOpenServClaimWorkflow()` in `src/core/openserv.ts` — full 6-step claim workflow with x402 payments |
 | **Let the Agent Cook (PL)** | $4,000 | ✅ ERC-8004 + autonomous agent + agent.json + multi-tool orchestration |
