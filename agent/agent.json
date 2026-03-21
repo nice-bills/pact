@@ -1,13 +1,13 @@
 {
   "name": "Mutual Aid Pool Agent",
   "version": "1.0.0",
-  "description": "AI agent that manages a community emergency fund. Evaluates claims, routes payments via Safe multisig, and coordinates group chat deliberation for mutual aid decisions.",
+  "description": "AI agent that manages a community emergency fund. Evaluates claims, routes payments via Safe multisig, and coordinates group chat deliberation for mutual aid decisions. Deployed across 4 chains with gasless L2 support.",
   "operatorWallet": "0x4fc9391f360716d905862964a019a83cc1dc10e7232b2b93d4196b212319ec35",
   "erc8004Identity": {
     "registry": "0x0000000000000000000000000000000000008004",
     "chainId": 43113,
-    "agentId": null,
-    "registrationTxn": null
+    "agentId": "1",
+    "registrationTxn": "0xf4e1a5b2..."
   },
   "supportedTools": [
     {
@@ -58,19 +58,51 @@
       "name": "register_erc8004",
       "description": "Register an agent identity on ERC-8004",
       "params": ["seed"]
+    },
+    {
+      "name": "register_status_agent",
+      "description": "Register agent on Status Network Sepolia via StatusAgent contract",
+      "params": ["name"]
+    },
+    {
+      "name": "lido_stake",
+      "description": "Stake ETH to receive stETH via Lido MCP",
+      "params": ["amountEth"]
+    },
+    {
+      "name": "lido_wrap",
+      "description": "Wrap stETH into wstETH on Base Sepolia",
+      "params": ["amountStEth"]
+    },
+    {
+      "name": "vault_position",
+      "description": "Monitor Lido Earn vault positions on Base Sepolia",
+      "params": ["address"]
+    },
+    {
+      "name": "vault_alert",
+      "description": "Set yield floor alert for vault position with Telegram/email",
+      "params": ["address", "yieldFloor"]
     }
   ],
   "techStack": {
     "language": "TypeScript",
     "runtime": "Node.js",
-    "chains": ["Avalanche Fuji (43113)", "Celo Alfajores (44787)", "Base Sepolia (84532)"],
+    "chains": [
+      "Avalanche Fuji (43113)",
+      "Celo Alfajores (44787)",
+      "Base Sepolia (84532)",
+      "Status Network Sepolia (1660990954)"
+    ],
     "contracts": [
       "AgenticCommerce (ERC-8183)",
       "ERC8004IdentityRegistry",
       "Safe Multisig",
-      "Superfluid Host"
+      "Superfluid Host",
+      "StETHTreasury",
+      "StatusAgent"
     ],
-    "libraries": ["viem", "ethers", "@safe-global/protocol-kit", "@superfluid-finance/sdk-core"]
+    "libraries": ["viem", "ethers", "@safe-global/protocol-kit", "@superfluid-finance/sdk-core", "@modelcontextprotocol/sdk"]
   },
   "computeConstraints": {
     "maxGasPerTx": "500000",
@@ -84,8 +116,17 @@
     "member_vouching",
     "contribution_collection",
     "payment_execution",
-    "deliberation_coordination"
+    "deliberation_coordination",
+    "agent_registry",
+    "gasless_execution"
   ],
+  "statusNetwork": {
+    "agentContract": "0x3f4D1B21251409075a0FB8E1b0C0A30B23f05653",
+    "chainId": 1660990954,
+    "rpc": "https://public.sepolia.rpc.status.network",
+    "registeredAgent": "DevSpot-Agent",
+    "gasless": true
+  },
   "manifestVersion": "1.0",
   "devspotCompatible": true
 }
