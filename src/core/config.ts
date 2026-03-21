@@ -48,10 +48,20 @@ export const CHAIN_ID = CHAIN_CONFIG.id;
 export const RPC_URL = CHAIN_CONFIG.rpc;
 export const USDC_ADDRESS = CHAIN_CONFIG.usdc as `0x${string}`;
 export const CHAIN_EXPLORER = CHAIN_CONFIG.explorer;
+export const X402_ENABLED = CHAIN_CONFIG.x402Enabled;
 
 export const SUPERFLUID_HOST = "0x109412E3C84f0539b43d39dB691B08c90f58dC7c" as const;
 export const USDCX_ADDRESS = "0x2C4608e5E9bEcf46096Fc4E8A4524dAF0e59954b" as const;
-export const ERC8004_IDENTITY_REGISTRY = "0x0000000000000000000000000000000000000000" as const;
+
+export const ERC8004_IDENTITY_REGISTRY: `0x${string}` = (() => {
+  if (CHAIN_NAME === "avalanche-fuji") {
+    return "0x00000000000000000000000000000000008004" as `0x${string}`;
+  }
+  if (CHAIN_NAME === "base-sepolia") {
+    return "0x00000000000000000000000000000000008004" as `0x${string}`;
+  }
+  return "0x0000000000000000000000000000000000000000" as `0x${string}`;
+})();
 
 export const AGENTIC_COMMERCE_ADDRESS = process.env.AGENTIC_COMMERCE_ADDRESS ?? "";
 export const POOL_SAFE_ADDRESS = process.env.POOL_SAFE_ADDRESS ?? "";

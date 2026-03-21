@@ -1,6 +1,6 @@
-import { createPublicClient, http } from "viem";
-import { baseSepolia } from "viem/chains";
-import { RPC_URL, USDC_ADDRESS, SUPERFLUID_HOST, USDCX_ADDRESS } from "../../core/config";
+import { createPublicClient, createWalletClient, http, padHex, parseUnits, stringToHex } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import { CHAIN, CHAIN_ID, RPC_URL, USDC_ADDRESS, SUPERFLUID_HOST, USDCX_ADDRESS } from "../../core/config";
 import { MutualAidPool } from "../../core/pool";
 import type { PoolConfig } from "../../core/types";
 
@@ -9,7 +9,7 @@ function getPoolConfig(poolAddress: `0x${string}`): PoolConfig {
     safeAddress: poolAddress,
     agenticCommerceAddress: (process.env.AGENTIC_COMMERCE_ADDRESS ?? "") as `0x${string}`,
     paymentTokenAddress: USDC_ADDRESS,
-    chainId: baseSepolia.id,
+    chainId: CHAIN_ID,
     rpcUrl: RPC_URL,
     threshold: 2,
     monthlyContributionUsd: 5,
@@ -42,19 +42,19 @@ export async function poolJoin(opts: {
 }): Promise<void> {
   const config = getPoolConfig(opts.pool);
   const pool = new MutualAidPool(config, getDeployerKey());
-  pool.addFoundingMember(opts.voucher);
+  pool.vouchForMember(opts.voucher, opts.voucher);
   console.log(`Voucher ${opts.voucher} recorded for pool ${opts.pool}`);
 }
 
 export async function poolStatus(opts: { pool: `0x${string}` }): Promise<void> {
   const config = getPoolConfig(opts.pool);
   const publicClient = createPublicClient({
-    chain: baseSepolia,
+    chain: CHAIN,
     transport: http(RPC_URL),
   });
 
   console.log(`Pool Safe: ${opts.pool}`);
-  console.log(`Chain: Base Sepolia (${baseSepolia.id})`);
+  console.log(`Chain: ${CHAIN.name} (${CHAIN_ID})`);
 
   try {
     const pool = new MutualAidPool(config, getDeployerKey());
@@ -91,6 +91,20 @@ export async function poolStreamOpen(opts: {
   flowRate: number;
 }): Promise<void> {
   const config = getPoolConfig(opts.pool);
+  const privateKey = getDeployerKey();
+  const { openContributionStream } = await import("../../core/streaming.js");
+
   console.log(`Opening stream to ${opts.pool} at $${opts.flowRate}/month`);
-  console.log("(Stream requires wallet signer — run via CLI with DEPLOYER_PRIVATE_KEY)");
+  try {
+    const txHash = await openContributionStream({
+      rpcUrl: RPC_URL,
+      privateKey,
+      superTokenAddress: USDCX_ADDRESS,
+      recipientAddress: opts.pool,
+      flowRatePerMonth: opts.flowRate,
+    }, CHAIN);
+    console.log(`Stream opened: ${txHash}`);
+  } catch (error) {
+    console.error(`Failed to open stream: ${error}`);
+  }
 }

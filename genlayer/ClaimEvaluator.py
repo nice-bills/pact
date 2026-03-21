@@ -9,6 +9,8 @@ but reasoning may differ (strict_eq on verdict, flexible on reasoning).
 """
 
 import genlayer as gl
+import json as json_module
+import re
 
 
 SYSTEM_PROMPT = """You are an insurance claim evaluator for a mutual aid pool.
@@ -32,26 +34,58 @@ Respond in JSON format only:
 }"""
 
 
+def _parse_llm_response(raw: str) -> dict:
+    json_match = re.search(r"\{[\s\S]*\}", raw)
+    if not json_match:
+        return {
+            "approve": False,
+            "confidence": 0,
+            "reasoning": f"Could not parse LLM response: {raw[:200]}",
+        }
+    try:
+        parsed = json_module.loads(json_match.group(0))
+        return {
+            "approve": bool(parsed.get("approve", False)),
+            "confidence": max(0, min(100, int(parsed.get("confidence", 0)))),
+            "reasoning": str(parsed.get("reasoning", "")),
+        }
+    except (json_module.JSONDecodeError, ValueError, TypeError):
+        return {
+            "approve": False,
+            "confidence": 0,
+            "reasoning": f"Malformed JSON in LLM response: {raw[:200]}",
+        }
+
+
+def _run_evaluation(user_message: str) -> dict:
+    prompt_input = {
+        "role": "user",
+        "content": f"{SYSTEM_PROMPT}\n\n{user_message}"
+    }
+    raw = gl.nondet.exec_prompt([prompt_input], model="default", temperature=0.1)
+    return _parse_llm_response(raw)
+
+
 class ClaimEvaluator(gl.Contract):
     def __init__(self):
         self.owner = gl.storage.get("owner")
         self.min_confidence = gl.storage.get("min_confidence")
-        self.evaluations = gl.storage.get("evaluations")
+        self.evaluations = gl.storage.get("evaluations") or {}
+        self._initialized = self.owner is not None
 
     @gl.public.initialize
     def initialize(self, owner: str, min_confidence: int) -> bool:
-        if self.owner is not None:
+        if self._initialized:
             raise Exception("Contract already initialized")
         gl.storage.set("owner", owner)
         gl.storage.set("min_confidence", min_confidence)
         gl.storage.set("evaluations", {})
+        self._initialized = True
         return True
 
     @gl.public.view
     def get_evaluation(self, claim_id: str) -> dict:
-        evals = gl.storage.get("evaluations")
-        if evals is None:
-            return {}
+        evals = gl.storage.get("evaluations") or {}
         return evals.get(claim_id, {})
 
     @gl.public.view
@@ -70,8 +104,11 @@ class ClaimEvaluator(gl.Contract):
         description: str,
         evidence_ipfs_hash: str,
     ) -> dict:
-        if self.owner is None:
+        if not self._initialized:
             raise Exception("Contract not initialized")
+
+        if not claim_id or not claim_id.strip():
+            raise Exception("claim_id cannot be empty")
 
         user_message = (
             f"Emergency claim evaluation request:\n"
@@ -82,72 +119,55 @@ class ClaimEvaluator(gl.Contract):
             f"Please evaluate this claim and respond in JSON format."
         )
 
-        leader_result = self._run_evaluation(user_message)
+        leader_result = _run_evaluation(user_message)
         leader_verdict = leader_result["approve"]
-
-        validator_result = self._run_evaluation(user_message)
-        validator_verdict = validator_result["approve"]
-
         leader_calldata = leader_result
+
+        validator_result = _run_evaluation(user_message)
+        validator_verdict = validator_result["approve"]
         validator_calldata = validator_result
 
-        final_result = gl.vm.run_nondet_unsafe(
-            lambda: (leader_verdict, leader_calldata),
-            lambda result: (
-                validator_verdict == result[0]
-                and self._verdict_matches(validator_calldata, result[1])
-            ),
-        )
+        def leader_fn():
+            return (leader_verdict, json_module.dumps(leader_calldata, sort_keys=True))
 
-        gl.storage.set(
-            "evaluations",
-            {
-                **gl.storage.get("evaluations"),
-                claim_id: {
-                    "approve": final_result["approve"],
-                    "confidence": final_result["confidence"],
-                    "reasoning": final_result["reasoning"],
-                    "evaluated_at": gl.block.current().timestamp,
-                    "claimant": claimant_address,
-                    "amount_usd": amount_usd,
-                },
-            },
-        )
+        def validator_fn(result):
+            try:
+                result_data = json_module.loads(result[1])
+                return (
+                    validator_verdict == result[0]
+                    and validator_calldata.get("approve") == result_data.get("approve")
+                )
+            except (json_module.JSONDecodeError, TypeError, IndexError):
+                return False
 
-        return final_result
+        agreed = gl.vm.run_nondet_unsafe(leader_fn, validator_fn)
 
-    def _run_evaluation(self, user_message: str) -> dict:
-        prompt_input = {"role": "user", "content": f"{SYSTEM_PROMPT}\n\n{user_message}"}
-        raw = gl.nondet.exec_prompt([prompt_input], model="default", temperature=0.1)
-        return self._parse_llm_response(raw)
+        if isinstance(agreed, gl.vm.Return):
+            final_data = json_module.loads(agreed.calldata)
+        else:
+            final_data = leader_calldata
 
-    def _parse_llm_response(self, raw: str) -> dict:
-        import json
-        import re
-
-        json_match = re.search(r"\{[\s\S]*\}", raw)
-        if not json_match:
-            return {
-                "approve": False,
-                "confidence": 0,
-                "reasoning": f"Could not parse LLM response: {raw[:200]}",
-            }
-        parsed = json.loads(json_match.group(0))
-        return {
-            "approve": bool(parsed.get("approve", False)),
-            "confidence": int(parsed.get("confidence", 0)),
-            "reasoning": str(parsed.get("reasoning", "")),
+        evals = dict(gl.storage.get("evaluations") or {})
+        evals[claim_id] = {
+            "approve": final_data["approve"],
+            "confidence": final_data["confidence"],
+            "reasoning": final_data["reasoning"],
+            "evaluated_at": gl.block.current().timestamp,
+            "claimant": claimant_address,
+            "amount_usd": amount_usd,
         }
+        gl.storage.set("evaluations", evals)
 
-    def _verdict_matches(self, expected: dict, actual: dict) -> bool:
-        return expected.get("approve") == actual.get("approve")
+        return final_data
 
     @gl.public.write
     def set_min_confidence(self, min_confidence: int) -> bool:
-        if self.owner is None:
+        if not self._initialized:
             raise Exception("Contract not initialized")
         caller = gl.transaction.get_origin()
         if caller != self.owner:
             raise Exception("Only owner can set min_confidence")
+        if not (0 <= min_confidence <= 100):
+            raise Exception("min_confidence must be between 0 and 100")
         gl.storage.set("min_confidence", min_confidence)
         return True

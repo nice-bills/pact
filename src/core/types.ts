@@ -73,3 +73,10 @@ export interface ClaimCreationResult {
   jobId: bigint;
   txs: ClaimLifecycleTxs;
 }
+
+export type StreamInfoFn = (
+  rpcUrl: string,
+  senderAddress: `0x${string}`,
+  receiverAddress: `0x${string}`,
+  superTokenAddress: `0x${string}`
+) => Promise<{ flowRate: string; active: boolean }>;

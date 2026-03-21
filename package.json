@@ -13,6 +13,7 @@
     "serve": "tsx src/cli/index.ts serve",
     "verify": "tsx scripts/verify.ts",
     "cleanup": "tsx scripts/cleanup.ts",
+    "demo:fresh": "tsx src/demo/run-demo.ts",
     "deploy:erc8183": "tsx src/deploy/deploy-erc8183.ts",
     "deploy:safe": "tsx src/deploy/create-safe.ts",
     "deploy:all": "tsx src/deploy/deploy-all.ts",

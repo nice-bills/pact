@@ -1,4 +1,4 @@
-import { ethers } from "ethers";
+import { recoverMessageAddress } from "viem";
 import type { ClaimSubmission, SignedClaimSubmission } from "./types.js";
 
 export interface ClaimSigningContext {
@@ -10,6 +10,7 @@ export function buildClaimAuthorizationMessage(
   submission: ClaimSubmission,
   context: ClaimSigningContext
 ): string {
+  const nonce = Math.random().toString(36).slice(2) + Date.now().toString(36);
   return [
     "MutualAidPool Claim Authorization",
     `Pool:${context.poolAddress}`,
@@ -19,17 +20,17 @@ export function buildClaimAuthorizationMessage(
     `Evidence:${submission.evidenceIpfsHash}`,
     `Description:${submission.description}`,
     `SignedAt:${Math.floor(Date.now() / 1000)}`,
-    `Nonce:${Math.random().toString(36).slice(2)}`,
+    `Nonce:${nonce}`,
   ].join("\n");
 }
 
-export function verifyClaimAuthorization(
+export async function verifyClaimAuthorization(
   submission: SignedClaimSubmission,
   context: ClaimSigningContext
-): boolean {
+): Promise<boolean> {
   try {
-    const message = buildClaimAuthorizationMessage(submission, context);
-    const signer = ethers.utils.verifyMessage(message, submission.signature);
+    const rebuiltMessage = buildClaimAuthorizationMessage(submission, context);
+    const signer = await recoverMessageAddress({ message: rebuiltMessage, signature: submission.signature });
     return signer.toLowerCase() === submission.claimantAddress.toLowerCase();
   } catch {
     return false;

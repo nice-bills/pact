@@ -1,11 +1,8 @@
 import { createPublicClient, createWalletClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { baseSepolia } from "viem/chains";
+import { CHAIN, RPC_URL, USDC_ADDRESS } from "../core/config.js";
 import * as fs from "fs";
 import * as path from "path";
-
-const RPC_URL = process.env.BASE_SEPOLIA_RPC ?? "https://sepolia.base.org";
-const USDC_ADDRESS = "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
 
 async function main() {
   const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
@@ -15,26 +12,30 @@ async function main() {
   }
 
   const account = privateKeyToAccount(privateKey as `0x${string}`);
-  const publicClient = createPublicClient({ chain: baseSepolia, transport: http(RPC_URL) });
-  const walletClient = createWalletClient({ account, chain: baseSepolia, transport: http(RPC_URL) });
+  const publicClient = createPublicClient({ chain: CHAIN, transport: http(RPC_URL) });
+  const walletClient = createWalletClient({ account, chain: CHAIN, transport: http(RPC_URL) });
 
   console.log("=== Mutual Aid Pool Full Deployment ===\n");
+  console.log(`Chain: ${CHAIN.name} (${CHAIN.id})`);
+  console.log(`USDC: ${USDC_ADDRESS}`);
   console.log("Deployer:", account.address);
 
-  console.log("\n[1/3] Deploying AgenticCommerce (ERC-8183)...");
-  console.log("  (Use hardhat: npx hardhat run scripts/deploy-agentic-commerce.ts)");
-  console.log("  After deployment, set AGENTIC_COMMERCE_ADDRESS in .env");
-
-  console.log("\n[2/3] Deploying Safe multisig...");
-  console.log("  (Use deploy:safe npm script after setting AGENTIC_COMMERCE_ADDRESS)");
-
-  console.log("\n[3/3] Updating .env...");
   const envPath = path.join(process.cwd(), ".env");
   const updates: Record<string, string> = {
     AGENTIC_COMMERCE_ADDRESS: process.env.AGENTIC_COMMERCE_ADDRESS ?? "TODO",
     POOL_SAFE_ADDRESS: process.env.POOL_SAFE_ADDRESS ?? "TODO",
+    CHAIN_NAME: process.env.CHAIN_NAME ?? "base-sepolia",
   };
 
+  console.log("\n[1/3] AgenticCommerce (ERC-8183)");
+  console.log("  Run: npm run deploy:erc8183");
+  console.log("  Then set AGENTIC_COMMERCE_ADDRESS in .env");
+
+  console.log("\n[2/3] Safe Multisig");
+  console.log("  Run: npm run deploy:safe");
+  console.log("  Then set POOL_SAFE_ADDRESS in .env");
+
+  console.log("\n[3/3] Updating .env...");
   let envContent = fs.existsSync(envPath) ? fs.readFileSync(envPath, "utf-8") : "";
   for (const [key, value] of Object.entries(updates)) {
     const regex = new RegExp(`^${key}=.*$`, "m");
@@ -46,13 +47,13 @@ async function main() {
     }
   }
   fs.writeFileSync(envPath, envContent.trim() + "\n");
+  console.log("  .env updated");
 
-  console.log("\n.env updated. Verify and fill in TODO values.");
   console.log("\n=== Deployment Steps ===");
-  console.log("1. npx hardhat run scripts/deploy-agentic-commerce.ts");
-  console.log("2. Update .env with AGENTIC_COMMERCE_ADDRESS");
-  console.log("3. npm run deploy:safe");
-  console.log("4. Update .env with POOL_SAFE_ADDRESS");
+  console.log("1. npm run deploy:erc8183");
+  console.log("2. npm run deploy:safe");
+  console.log("3. npm run verify");
+  console.log("4. npm run demo:fresh");
 }
 
 main().catch((error) => {

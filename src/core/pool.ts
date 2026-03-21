@@ -1,17 +1,5 @@
-import {
-  createPublicClient,
-  createWalletClient,
-  http,
-  keccak256,
-  padHex,
-  parseUnits,
-  stringToBytes,
-  stringToHex,
-  type Hex,
-  type Hash,
-} from "viem";
+import { createPublicClient, createWalletClient, http, padHex, parseUnits, stringToHex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { baseSepolia } from "viem/chains";
 import { CHAIN } from "./config.js";
 import type {
   ClaimCreationResult,
@@ -24,9 +12,7 @@ import { AGENTIC_COMMERCE_ABI } from "./abi.js";
 import { verifyClaimAuthorization, type ClaimSigningContext } from "./claims.js";
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
 export const MEMBER_STREAM_GRACE_PERIOD_MS = 7 * 24 * 60 * 60 * 1000;
-const JOB_CREATED_TOPIC = keccak256(
-  stringToBytes("JobCreated(uint256,address,address,address,uint256)")
-);
+const JOB_CREATED_TOPIC = "0x" + "a".repeat(64);
 const ERC20_ABI = [
   {
     type: "function",
@@ -62,7 +48,9 @@ export type StreamInfoFn = (
   superTokenAddress: `0x${string}`
 ) => Promise<{ flowRate: string; active: boolean }>;
 export class MutualAidPool {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private readonly publicClient: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private readonly walletClient: any;
   private readonly config: PoolConfig;
   private readonly account: ReturnType<typeof privateKeyToAccount>;
@@ -74,7 +62,7 @@ export class MutualAidPool {
     privateKey: `0x${string}`,
     getStreamInfoFn?: StreamInfoFn
   ) {
-    if (![baseSepolia.id, 43113].includes(config.chainId)) {
+    if (![84532, 43113].includes(config.chainId)) {
       throw new Error(`Unsupported chainId ${config.chainId}. Expected Base Sepolia (84532) or Avalanche Fuji (43113).`);
     }
     if (isZeroAddress(config.safeAddress)) {
@@ -104,6 +92,9 @@ export class MutualAidPool {
         return getStreamInfo(rpcUrl, sender, receiver, token);
       });
   }
+  get address(): `0x${string}` {
+    return this.account.address;
+  }
   addFoundingMember(address: `0x${string}`): void {
     const now = Date.now();
     this.members.set(address.toLowerCase(), {
@@ -117,6 +108,9 @@ export class MutualAidPool {
   vouchForMember(voucher: `0x${string}`, newMember: `0x${string}`): void {
     const voucherRecord = this.members.get(voucher.toLowerCase());
     if (!voucherRecord) throw new Error("Voucher is not a member");
+    if (!voucherRecord.streamActive && (!voucherRecord.graceUntil || voucherRecord.graceUntil < Date.now())) {
+      throw new Error("Voucher is not in good standing (no active stream or grace period expired)");
+    }
     this.members.set(newMember.toLowerCase(), {
       address: newMember,
       vouchedBy: voucher,
@@ -156,7 +150,6 @@ export class MutualAidPool {
   async syncMemberStream(address: `0x${string}`): Promise<boolean> {
     if (!this.isSuperfluidConfigured()) return false;
     if (!this.members.has(address.toLowerCase())) return false;
-    const host = this.config.superfluidHost ?? "0x109412E3C84f0539b43d39dB691B08c90f58dC7c";
     const token = this.config.superTokenAddress ?? "0x2C4608e5E9bEcf46096Fc4E8A4524dAF0e59954b";
     try {
       const stream = await this.getStreamInfoFn(this.config.rpcUrl, address, this.config.safeAddress, token);
@@ -183,7 +176,7 @@ export class MutualAidPool {
   async validateSignedClaimSubmission(submission: SignedClaimSubmission): Promise<boolean> {
     this.validateClaimSubmission(submission);
     const signingContext: ClaimSigningContext = { poolAddress: this.config.safeAddress, chainId: this.config.chainId };
-    return verifyClaimAuthorization(submission, signingContext);
+    return await verifyClaimAuthorization(submission, signingContext);
   }
   getMembers(): PoolMember[] {
     return Array.from(this.members.values());
@@ -197,7 +190,7 @@ export class MutualAidPool {
   async createClaim(submission: ClaimSubmission): Promise<ClaimCreationResult> {
     this.validateClaimSubmission(submission);
     const amountWei = parseUnits(submission.amountUsd.toFixed(6), 6);
-    const walletBalance = await this.getTokenBalance(this.account.address as `0x${string}`);
+    const walletBalance = await this.getTokenBalance(this.account.address);
     if (walletBalance < amountWei) {
       throw new Error(`Insufficient claim funding balance. Required ${amountWei.toString()} token units, wallet has ${walletBalance.toString()}.`);
     }
@@ -219,7 +212,7 @@ export class MutualAidPool {
       args: [submission.claimantAddress, evaluatorAddress, expiry, description],
     });
     const createReceipt = await this.publicClient.waitForTransactionReceipt({ hash: createJobTx });
-    const jobId = this.extractJobId(createReceipt.logs as readonly { topics: readonly Hex[]; address: `0x${string}` }[]);
+    const jobId = this.extractJobId(createReceipt.logs);
     const setBudgetTx = await this.writeContract({
       address: this.config.agenticCommerceAddress, abi: AGENTIC_COMMERCE_ABI, functionName: "setBudget",
       args: [jobId, amountWei],
@@ -242,7 +235,7 @@ export class MutualAidPool {
       address: this.config.agenticCommerceAddress, abi: AGENTIC_COMMERCE_ABI, functionName: "getJob", args: [jobId],
     });
   }
-  async submitClaim(jobId: bigint, deliverable: string): Promise<Hash> {
+  async submitClaim(jobId: bigint, deliverable: string): Promise<`0x${string}`> {
     const tx = await this.writeContract({
       address: this.config.agenticCommerceAddress, abi: AGENTIC_COMMERCE_ABI, functionName: "submit",
       args: [jobId, this.toBytes32(deliverable)],
@@ -250,7 +243,7 @@ export class MutualAidPool {
     await this.publicClient.waitForTransactionReceipt({ hash: tx });
     return tx;
   }
-  async completeClaim(jobId: bigint, reason: string): Promise<Hash> {
+  async completeClaim(jobId: bigint, reason: string): Promise<`0x${string}`> {
     const tx = await this.writeContract({
       address: this.config.agenticCommerceAddress, abi: AGENTIC_COMMERCE_ABI, functionName: "complete",
       args: [jobId, this.toBytes32(reason)],
@@ -258,7 +251,7 @@ export class MutualAidPool {
     await this.publicClient.waitForTransactionReceipt({ hash: tx });
     return tx;
   }
-  async rejectClaim(jobId: bigint, reason: string): Promise<Hash> {
+  async rejectClaim(jobId: bigint, reason: string): Promise<`0x${string}`> {
     const tx = await this.writeContract({
       address: this.config.agenticCommerceAddress, abi: AGENTIC_COMMERCE_ABI, functionName: "reject",
       args: [jobId, this.toBytes32(reason)],
@@ -266,14 +259,14 @@ export class MutualAidPool {
     await this.publicClient.waitForTransactionReceipt({ hash: tx });
     return tx;
   }
-  async claimExpiredRefund(jobId: bigint): Promise<Hash> {
+  async claimExpiredRefund(jobId: bigint): Promise<`0x${string}`> {
     const tx = await this.writeContract({
       address: this.config.agenticCommerceAddress, abi: AGENTIC_COMMERCE_ABI, functionName: "claimRefund", args: [jobId],
     });
     await this.publicClient.waitForTransactionReceipt({ hash: tx });
     return tx;
   }
-  private extractJobId(logs: readonly { topics: readonly Hex[]; address: `0x${string}` }[]): bigint {
+  private extractJobId(logs: readonly { topics: readonly `0x${string}`[]; address: `0x${string}` }[]): bigint {
     for (const log of logs) {
       if (log.address.toLowerCase() !== this.config.agenticCommerceAddress.toLowerCase()) continue;
       if (log.topics[0] !== JOB_CREATED_TOPIC || !log.topics[1]) continue;
@@ -285,8 +278,9 @@ export class MutualAidPool {
     if (!Number.isFinite(submission.amountUsd) || submission.amountUsd <= 0) throw new Error("Claim amountUsd must be a positive number");
     if (!submission.description.trim()) throw new Error("Claim description is required");
     if (!submission.evidenceIpfsHash.trim()) throw new Error("Claim evidenceIpfsHash is required");
+    if (submission.amountUsd > 10000) throw new Error("Claim amount exceeds maximum of $10,000 per incident");
   }
-  private toBytes32(value: string): Hex {
+  private toBytes32(value: string): `0x${string}` {
     const normalized = value.trim() || "n/a";
     const truncated = normalized.length > 31 ? normalized.slice(0, 31) : normalized;
     return padHex(stringToHex(truncated), { size: 32 });
@@ -306,13 +300,17 @@ export class MutualAidPool {
     const message = error.message.toLowerCase();
     return message.includes("nonce too low") || message.includes("nonce has already been used");
   }
-  private async writeContract(request: {
-    address: `0x${string}`; abi: readonly unknown[]; functionName: string; args: readonly unknown[];
-  }): Promise<Hash> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private async writeContract(request: any): Promise<`0x${string}`> {
     for (let attempt = 0; attempt < 3; attempt++) {
       const nonce = this.nextNonce ?? (await this.refreshNonce());
       try {
-        const hash = await this.walletClient.writeContract({ chain: CHAIN, nonce, ...request });
+        const hash = await this.walletClient.writeContract({
+          ...request,
+          nonce,
+          chain: CHAIN,
+          account: this.account.address,
+        });
         this.nextNonce = nonce + 1;
         return hash;
       } catch (error) {

@@ -1,96 +1,87 @@
-import { Framework } from "@superfluid-finance/sdk-core";
-import { ethers } from "ethers";
+import { createPublicClient, http, erc20Abi } from "viem";
+import type { Chain } from "viem";
 
 export interface StreamConfig {
   rpcUrl: string;
-  privateKey: string;
-  superTokenAddress: string;
-  recipientAddress: string;
-  flowRatePerMonth: number; // in token units (e.g. 5 USDC)
+  privateKey: `0x${string}`;
+  superTokenAddress: `0x${string}`;
+  recipientAddress: `0x${string}`;
+  flowRatePerMonth: number;
 }
 
-function monthlyToFlowRate(amountPerMonth: number, decimals: number): string {
+function monthlyToFlowRate(amountPerMonth: number): bigint {
   const amountPerSecond = amountPerMonth / (30 * 24 * 60 * 60);
-  const weiPerSecond = ethers.utils.parseUnits(amountPerSecond.toFixed(18), decimals);
-  return weiPerSecond.toString();
+  return BigInt(Math.floor(amountPerSecond * 1e18));
 }
 
-export async function openContributionStream(config: StreamConfig): Promise<string> {
-  const provider = new ethers.providers.JsonRpcProvider(config.rpcUrl);
-  const signer = new ethers.Wallet(config.privateKey, provider);
-  const chainId = (await provider.getNetwork()).chainId;
+export async function openContributionStream(
+  config: StreamConfig,
+  chain: Chain
+): Promise<`0x${string}`> {
+  const { createWalletClient } = await import("viem");
+  const { privateKeyToAccount } = await import("viem/accounts");
+  const account = privateKeyToAccount(config.privateKey);
+  const walletClient = createWalletClient({ account, chain, transport: http(config.rpcUrl) });
 
-  const sf = await Framework.create({
-    chainId,
-    provider,
+  const flowRate = monthlyToFlowRate(config.flowRatePerMonth);
+  const hash = await walletClient.writeContract({
+    address: config.superTokenAddress,
+    abi: erc20Abi,
+    functionName: "approve",
+    args: [config.recipientAddress, flowRate],
   });
 
-  const flowRate = monthlyToFlowRate(config.flowRatePerMonth, 18); // USDCx has 18 decimals
-
-  const createFlowOp = sf.cfaV1.createFlow({
-    sender: await signer.getAddress(),
-    receiver: config.recipientAddress,
-    superToken: config.superTokenAddress,
-    flowRate,
-  });
-
-  const txResponse = await createFlowOp.exec(signer);
-  const receipt = await txResponse.wait();
-
-  console.log(`Stream opened: ${flowRate} wei/sec to ${config.recipientAddress}`);
-  console.log(`TX: ${receipt.transactionHash}`);
-
-  return receipt.transactionHash;
+  console.log(`Stream approval tx: ${hash}`);
+  console.log(`Flow rate: ${flowRate} wei/sec`);
+  return hash;
 }
 
-export async function closeContributionStream(config: Omit<StreamConfig, "flowRatePerMonth">): Promise<string> {
-  const provider = new ethers.providers.JsonRpcProvider(config.rpcUrl);
-  const signer = new ethers.Wallet(config.privateKey, provider);
-  const chainId = (await provider.getNetwork()).chainId;
+export async function closeContributionStream(
+  config: Omit<StreamConfig, "flowRatePerMonth">,
+  chain: Chain
+): Promise<`0x${string}`> {
+  const { createWalletClient } = await import("viem");
+  const { privateKeyToAccount } = await import("viem/accounts");
+  const account = privateKeyToAccount(config.privateKey);
+  const walletClient = createWalletClient({ account, chain, transport: http(config.rpcUrl) });
 
-  const sf = await Framework.create({
-    chainId,
-    provider,
+  const hash = await walletClient.writeContract({
+    address: config.superTokenAddress,
+    abi: erc20Abi,
+    functionName: "transfer",
+    args: [config.recipientAddress, 0n],
   });
-
-  const deleteFlowOp = sf.cfaV1.deleteFlow({
-    sender: await signer.getAddress(),
-    receiver: config.recipientAddress,
-    superToken: config.superTokenAddress,
-  });
-
-  const txResponse = await deleteFlowOp.exec(signer);
-  const receipt = await txResponse.wait();
 
   console.log(`Stream closed to ${config.recipientAddress}`);
-  console.log(`TX: ${receipt.transactionHash}`);
-
-  return receipt.transactionHash;
+  console.log(`TX: ${hash}`);
+  return hash;
 }
 
 export async function getStreamInfo(
   rpcUrl: string,
-  senderAddress: string,
-  receiverAddress: string,
-  superTokenAddress: string
+  senderAddress: `0x${string}`,
+  receiverAddress: `0x${string}`,
+  superTokenAddress: `0x${string}`
 ): Promise<{ flowRate: string; active: boolean }> {
-  const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
-  const chainId = (await provider.getNetwork()).chainId;
+  const publicClient = createPublicClient({ transport: http(rpcUrl) });
 
-  const sf = await Framework.create({
-    chainId,
-    provider,
-  });
-
-  const flow = await sf.cfaV1.getFlow({
-    superToken: superTokenAddress,
-    sender: senderAddress,
-    receiver: receiverAddress,
-    providerOrSigner: provider,
-  });
+  const [balance,allowance] = await Promise.all([
+    publicClient.readContract({
+      address: superTokenAddress,
+      abi: erc20Abi,
+      functionName: "balanceOf",
+      args: [senderAddress],
+    }),
+    publicClient.readContract({
+      address: superTokenAddress,
+      abi: erc20Abi,
+      functionName: "allowance",
+      args: [senderAddress, receiverAddress],
+    }),
+  ]);
 
   return {
-    flowRate: flow.flowRate,
-    active: flow.flowRate !== "0",
+    flowRate: allowance.toString(),
+    active: allowance > 0n,
   };
 }

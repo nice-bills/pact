@@ -75,7 +75,7 @@ describe("evaluator.ts", () => {
     expect(result.confidence).toBe(50);
   });
 
-  it("returns manual-review fallback on API error", async () => {
+  it("returns manual-review fallback on API error (not auto-deny)", async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: false,
       status: 500,
@@ -86,6 +86,7 @@ describe("evaluator.ts", () => {
     const result = await evaluateClaim(SUBMISSION, "bad-key");
     expect(result.approve).toBe(false);
     expect(result.confidence).toBe(0);
-    expect(result.reasoning).toContain("Evaluation failed");
+    expect(result.reasoning).toContain("Evaluation unavailable");
+    expect(result.reasoning).toContain("manual committee review");
   });
 });
