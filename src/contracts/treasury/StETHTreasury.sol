@@ -2,13 +2,14 @@
 pragma solidity ^0.8.23;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /// @title StETH Agent Treasury
 /// @notice Allows humans to give AI agents a yield-bearing operating budget backed by stETH,
 ///         where only the yield (not principal) can be spent by the agent.
 /// @dev Principal is structurally inaccessible to the agent. Only accumulated yield
 ///      can be drawn via spend(). Agent can query yield balance but never touches principal.
-contract StETHTreasury {
+contract StETHTreasury is ReentrancyGuard {
     IERC20 public immutable stETH;
     IERC20 public immutable wstETH;
 
@@ -59,16 +60,16 @@ contract StETHTreasury {
     /// @notice Agent withdraws accumulated yield to a recipient.
     /// @param recipient Address to send the yield funds
     /// @param amount Amount of yield to withdraw
-    function spend(address recipient, uint256 amount) external {
+    function spend(address recipient, uint256 amount) external nonReentrant {
         require(msg.sender == agent, "Only agent can spend");
         _accrue(HUMAN);
 
         require(amount <= yieldBalance[HUMAN], "Insufficient yield balance");
         require(amount > 0, "Cannot withdraw 0");
 
-        // Check recipient whitelist if set
-        if (allowedRecipients[HUMAN] && recipient != HUMAN) {
-            require(allowedRecipients[recipient], "Recipient not allowed");
+        // Check recipient whitelist if enabled
+        if (allowedRecipients[HUMAN]) {
+            require(recipient == HUMAN || allowedRecipients[recipient], "Recipient not allowed");
         }
 
         // Check spending cap
@@ -91,18 +92,18 @@ contract StETHTreasury {
     function queryYield() external view returns (uint256 yieldAvailable, uint256 totalPrincipal) {
         totalPrincipal = principal[HUMAN];
         yieldAvailable = yieldBalance[HUMAN];
-        // Simplified: in production, use Lido's getRewards() for on-chain accrual
-        uint256 elapsed = block.timestamp - lastAccrualTime[HUMAN];
-        uint256 accrued = (principal[HUMAN] * ANNUAL_YIELD_BPS * elapsed) / (BPS * SECONDS_PER_YEAR);
-        yieldAvailable += accrued;
     }
 
-    /// @notice Human approves a recipient address for agent spending.
-    /// @param recipient Address the agent is allowed to send yield to
+    /// @notice Human enables/disables recipient whitelist mode, and sets individually allowed recipients.
+    /// @param enabled True to require agents to only spend to HUMAN or explicitly allowed recipients
+    /// @param recipient Address to allow (only checked if enabled is true)
     /// @param allowed True to allow, false to disallow
-    function setRecipientAllowed(address recipient, bool allowed) external {
+    function setRecipientAllowed(bool enabled, address recipient, bool allowed) external {
         require(msg.sender == HUMAN, "Only human can set recipients");
-        allowedRecipients[recipient] = allowed;
+        allowedRecipients[HUMAN] = enabled;
+        if (enabled) {
+            allowedRecipients[recipient] = allowed;
+        }
         emit RecipientAllowed(HUMAN, recipient);
     }
 
