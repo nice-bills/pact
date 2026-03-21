@@ -10,7 +10,6 @@ export function buildClaimAuthorizationMessage(
   submission: ClaimSubmission,
   context: ClaimSigningContext
 ): string {
-  const nonce = Math.random().toString(36).slice(2) + Date.now().toString(36);
   return [
     "MutualAidPool Claim Authorization",
     `Pool:${context.poolAddress}`,
@@ -20,7 +19,7 @@ export function buildClaimAuthorizationMessage(
     `Evidence:${submission.evidenceIpfsHash}`,
     `Description:${submission.description}`,
     `SignedAt:${Math.floor(Date.now() / 1000)}`,
-    `Nonce:${nonce}`,
+    `Nonce:${submission.nonce}`,
   ].join("\n");
 }
 

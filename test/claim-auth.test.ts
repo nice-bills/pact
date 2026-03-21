@@ -34,41 +34,20 @@ describe("claims.ts", () => {
       expect(msg).toContain("Medical emergency");
     });
 
-    it("produces different nonces each call", () => {
+    it("rebuilds to same message when nonce is provided", () => {
+      const nonce = "fixed-nonce-123";
       const submission: ClaimSubmission = {
         claimantAddress: CLAIMANT,
         amountUsd: 50,
         evidenceIpfsHash: "QmABC",
         description: "Rent",
+        nonce,
       };
       const ctx = { poolAddress: POOL_ADDRESS, chainId: CHAIN_ID };
       const msg1 = buildClaimAuthorizationMessage(submission, ctx);
       const msg2 = buildClaimAuthorizationMessage(submission, ctx);
-      expect(msg1).not.toBe(msg2);
-    });
-
-    it("rebuilds to same message with same nonce", () => {
-      const submission: ClaimSubmission = {
-        claimantAddress: CLAIMANT,
-        amountUsd: 50,
-        evidenceIpfsHash: "QmABC",
-        description: "Rent",
-      };
-      const ctx = { poolAddress: POOL_ADDRESS, chainId: CHAIN_ID };
-      const nonce = "fixed-nonce-123";
-      const build = (s: ClaimSubmission, c: typeof ctx, n: string) => [
-        "MutualAidPool Claim Authorization",
-        `Pool:${c.poolAddress}`,
-        `ChainId:${c.chainId}`,
-        `Claimant:${s.claimantAddress}`,
-        `AmountUsd:${s.amountUsd}`,
-        `Evidence:${s.evidenceIpfsHash}`,
-        `Description:${s.description}`,
-        `SignedAt:${Math.floor(Date.now() / 1000)}`,
-        `Nonce:${n}`,
-      ].join("\n");
-      const msg = build(submission, ctx, nonce);
-      expect(msg).toContain(nonce);
+      expect(msg1).toBe(msg2);
+      expect(msg1).toContain(`Nonce:${nonce}`);
     });
   });
 

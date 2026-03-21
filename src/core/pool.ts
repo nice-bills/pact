@@ -10,6 +10,7 @@ import type {
 } from "./types.js";
 import { AGENTIC_COMMERCE_ABI } from "./abi.js";
 import { verifyClaimAuthorization, type ClaimSigningContext } from "./claims.js";
+import { ERC8004_IDENTITY_REGISTRY } from "./erc8004.js";
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
 export const MEMBER_STREAM_GRACE_PERIOD_MS = 7 * 24 * 60 * 60 * 1000;
 const JOB_CREATED_TOPIC = "0x" + "a".repeat(64);
@@ -279,6 +280,24 @@ export class MutualAidPool {
     if (!submission.description.trim()) throw new Error("Claim description is required");
     if (!submission.evidenceIpfsHash.trim()) throw new Error("Claim evidenceIpfsHash is required");
     if (submission.amountUsd > 10000) throw new Error("Claim amount exceeds maximum of $10,000 per incident");
+  }
+  async registerIdentity(seed?: string): Promise<`0x${string}`> {
+    if (ERC8004_IDENTITY_REGISTRY === "0x0000000000000000000000000000000000000000") {
+      throw new Error("ERC-8004 not supported on this chain");
+    }
+    const agentSeed = seed ?? `pool-${this.config.safeAddress}-${Date.now()}`;
+    const seedBytes = ("0x" + Buffer.from(agentSeed).toString("hex").padEnd(64, "0")) as `0x${string}`;
+    const ERC8004_ABI = [
+      { type: "function", name: "registerAgent", inputs: [{ name: "agentSeed", type: "bytes32" }], outputs: [{ name: "agentId", type: "uint96" }], stateMutability: "nonpayable" },
+    ] as const;
+    const txHash = await this.writeContract({
+      address: ERC8004_IDENTITY_REGISTRY,
+      abi: ERC8004_ABI,
+      functionName: "registerAgent",
+      args: [seedBytes],
+    });
+    console.log(`ERC-8004 registration tx: ${txHash}`);
+    return txHash;
   }
   private toBytes32(value: string): `0x${string}` {
     const normalized = value.trim() || "n/a";

@@ -21,7 +21,7 @@ export async function registerERC8004Agent(
   agentSeed: string,
   privateKey: `0x${string}`,
   registryAddress: `0x${string}`
-): Promise<bigint> {
+): Promise<`0x${string}`> {
   const { createWalletClient, http } = await import("viem");
   const { privateKeyToAccount } = await import("viem/accounts");
   const { CHAIN, RPC_URL } = await import("../core/config.js");
@@ -30,15 +30,15 @@ export async function registerERC8004Agent(
   const walletClient = createWalletClient({ account, chain: CHAIN, transport: http(RPC_URL) });
 
   const seedBytes = "0x" + Buffer.from(agentSeed).toString("hex").padEnd(64, "0");
-  const hash = await walletClient.writeContract({
+  const txHash = await walletClient.writeContract({
     address: registryAddress,
     abi: ERC8004_ABI,
     functionName: "registerAgent",
     args: [seedBytes as `0x${string}`],
   });
 
-  console.log(`ERC-8004 agent registration tx: ${hash}`);
-  return BigInt(0);
+  console.log(`ERC-8004 agent registration tx: ${txHash}`);
+  return txHash;
 }
 
 const ERC8004_ABI = [

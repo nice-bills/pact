@@ -54,6 +54,7 @@ export interface ClaimSubmission {
   amountUsd: number;
   evidenceIpfsHash: string;
   description: string;
+  nonce?: string;
 }
 
 export interface SignedClaimSubmission extends ClaimSubmission {

@@ -41,11 +41,13 @@ export async function claimSubmit(opts: {
   const config = getPoolConfig(opts.pool);
   const pool = new MutualAidPool(config, getDeployerKey());
 
+  const nonce = Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
   const submission: ClaimSubmission = {
     claimantAddress: claimant,
     amountUsd: opts.amount,
     evidenceIpfsHash: opts.evidence,
     description: opts.description,
+    nonce,
   };
 
   const account = privateKeyToAccount(claimant);
@@ -54,7 +56,7 @@ export async function claimSubmit(opts: {
   const msg = buildClaimAuthorizationMessage(submission, { poolAddress: opts.pool, chainId: CHAIN_ID });
   const signature = await walletClient.signMessage({ message: msg });
 
-  const signedSubmission = { ...submission, signedAt: Date.now(), nonce: Math.random().toString(36), signature };
+  const signedSubmission = { ...submission, signedAt: Date.now(), signature };
 
   console.log(`Claim submitted by ${claimant}:`);
   console.log(`  Amount: $${opts.amount}`);
