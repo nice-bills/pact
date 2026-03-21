@@ -32,7 +32,7 @@ const LIDO_CONFIG_TESTNET: LidoConfig = {
 
 function getLidoConfig(): LidoConfig {
   const chainId = Number(CHAIN.id);
-  if (chainId === 84532 || chainId === 43113) {
+  if (chainId === 1 || chainId === 8453) {
     return LIDO_CONFIG_MAINNET;
   }
   return LIDO_CONFIG_TESTNET;

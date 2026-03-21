@@ -19,7 +19,7 @@ export interface LocusGuardrailConfig {
 }
 
 const LOCUS_GUARDRAIL: Record<number, `0x${string}`> = {
-  84532: "0x000000000000000000000000000000000000L0cu5" as const,
+  84532: "0x0000000000000000000000000000000000000001" as const,
 };
 
 const LOCUS_ABI = [

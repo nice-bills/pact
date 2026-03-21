@@ -13,8 +13,8 @@ export interface AlkahestEscrow {
 }
 
 const ALKHATEST_REGISTRY: Record<number, `0x${string}`> = {
-  84532: "0x00000000000000000000000000000000000A1kh4" as const,
-  43113: "0x00000000000000000000000000000000000A1kh4" as const,
+  84532: "0x000000000000000000000000000000000000A1kh4" as const,
+  43113: "0x000000000000000000000000000000000000A1kh4" as const,
 };
 
 const ALKHATEST_ABI = [
@@ -148,5 +148,13 @@ export async function releaseAlkahestEscrow(
 }
 
 function parseEscrowCreatedLog(logs: { topics: `0x${string}`[]; data: `0x${string}` }[]): { escrowId: string } {
+  for (const log of logs) {
+    if (log.topics.length > 0) {
+      const escrowId = BigInt(log.data);
+      if (escrowId > BigInt(0)) {
+        return { escrowId: escrowId.toString() };
+      }
+    }
+  }
   return { escrowId: "0" };
 }

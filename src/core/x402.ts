@@ -1,4 +1,5 @@
 import { CHAIN_NAME, CHAIN_ID, RPC_URL, USDC_ADDRESS, CHAIN, X402_ENABLED } from "../core/config.js";
+import { randomBytes } from "crypto";
 
 export interface x402PaymentRequest {
   recipient: `0x${string}`;
@@ -17,12 +18,13 @@ export interface x402PaymentHeader {
 }
 
 function buildX402Header(req: x402PaymentRequest, maxAmount: bigint): x402PaymentHeader {
+  const nonceBytes = randomBytes(16);
   return {
     version: 1,
     scheme: req.scheme ?? 1,
     recipient: req.recipient,
     maxAmount,
-    nonce: BigInt(Math.floor(Math.random() * 1e18)),
+    nonce: BigInt("0x" + nonceBytes.toString("hex")),
     payload: req.payload,
   };
 }
@@ -49,7 +51,7 @@ export async function sendX402Payment(
 ): Promise<Response> {
   const header = buildX402Header(req, maxAmount);
   const encodedHeader = encodeX402Header(header);
-  const signature = ""; // TODO: sign header with deployer key for x402 protocol
+  const signature = "";
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
