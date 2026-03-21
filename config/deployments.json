@@ -1,0 +1,33 @@
+{
+  "avalanche-fuji": {
+    "chainId": 43113,
+    "erc8183": "0x77107B62a9149F0073F40846af477fa6f9E3543A",
+    "safe": "0xc6c0D80d00d3aCA069386245F4b3Ff1f3c1E9b4F",
+    "rpc": "https://api.avax-test.network/ext/bc/C/rpc"
+  },
+  "base-sepolia": {
+    "chainId": 84532,
+    "erc8183": "0x76Dd9C55D9a2e4B36219b4cC749deEF8324333e6",
+    "safe": null,
+    "rpc": "https://sepolia.base.org",
+    "uniswap": {
+      "quoter": "0xC5290058841028F1614F3A6F0F5816cAd0df5E27",
+      "router": "0x94cC0AaC535CCDB3C01d6787D6413C739ae12bc4",
+      "pool": "0x46880b404cd35c165eddeff7421019f8dd25f4ad",
+      "swapTx": "0x6bcc8a14256a60be604950a9a68fe4aea73199a30c386ef3b38cae6ea1d6e430"
+    }
+  },
+  "celo-alfajores": {
+    "chainId": 44787,
+    "erc8183": "0x60ae0caa3b0edc5e12f02be8c82C0e4ea7bd6eec",
+    "safe": "0x2525772E53955B5C099d62BBA66BF94EE9dc108f",
+    "rpc": "https://alfajores-forno.celo-testnet.org"
+  },
+  "status-sepolia": {
+    "chainId": 1660990954,
+    "agent": "0x3f4D1B21251409075a0FB8E1b0C0A30B23f05653",
+    "rpc": "https://public.sepolia.rpc.status.network",
+    "deployTx": "0xd0ba070c8bebaf061045f1220fae9357e41c7470d71d4fb609a7e1d873e5bf1b",
+    "gaslessTx": "0x9a963bf3aa4d81962d0f6f7350c7b460277e20e6a1edebc5e62a3d3651f78574"
+  }
+}
