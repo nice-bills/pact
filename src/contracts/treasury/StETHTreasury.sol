@@ -2,7 +2,6 @@
 pragma solidity ^0.8.23;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 /// @title StETH Agent Treasury
 /// @notice Allows humans to give AI agents a yield-bearing operating budget backed by stETH,
@@ -75,7 +74,6 @@ contract StETHTreasury {
         // Check spending cap
         uint256 cap = spendingCaps[HUMAN];
         if (cap > 0) {
-            uint256 period = periodStart[HUMAN];
             uint256 spent = spentThisPeriod[HUMAN][recipient];
             require(spent + amount <= cap, "Spending cap exceeded");
             spentThisPeriod[HUMAN][recipient] = spent + amount;
