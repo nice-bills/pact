@@ -1,4 +1,4 @@
-import { createWalletClient, http } from "viem";
+import { createWalletClient, createPublicClient, http } from "viem";
 import { CHAIN, RPC_URL } from "./config.js";
 
 export interface Delegation {
@@ -48,6 +48,63 @@ const DELEGATION_ABI = [
     ],
     stateMutability: "view",
   },
+  {
+    type: "function",
+    name: "setAuthority",
+    inputs: [
+      { name: "delegate", type: "address" },
+      { name: "authority", type: "bytes32" },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+] as const;
+
+const ERC7715_PERMISSIONS_ABI = [
+  {
+    type: "function",
+    name: "setPermissions",
+    inputs: [
+      { name: "delegate", type: "address" },
+      {
+        name: "permissions",
+        type: "tuple[]",
+        components: [
+          { name: "artifactUri", type: "string" },
+          { name: "functionSelector", type: "bytes4" },
+          { name: "chainId", type: "uint256" },
+          { name: "address", type: "address" },
+          { name: "value", type: "uint256" },
+          { name: "data", type: "bytes" },
+        ],
+      },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "getPermissions",
+    inputs: [
+      { name: "delegator", type: "address" },
+      { name: "delegate", type: "address" },
+    ],
+    outputs: [
+      {
+        name: "",
+        type: "tuple[]",
+        components: [
+          { name: "artifactUri", type: "string" },
+          { name: "functionSelector", type: "bytes4" },
+          { name: "chainId", type: "uint256" },
+          { name: "address", type: "address" },
+          { name: "value", type: "uint256" },
+          { name: "data", type: "bytes" },
+        ],
+      },
+    ],
+    stateMutability: "view",
+  },
 ] as const;
 
 export const PERMISSION_CLAIM_EVALUATE = "claim:evaluate";
@@ -65,6 +122,15 @@ export const PERMISSION_ALL = [
   PERMISSION_STREAM_OPEN,
   PERMISSION_STREAM_CLOSE,
 ];
+
+export interface ERC7715Permission {
+  artifactUri: string;
+  functionSelector: `0x${string}`;
+  chainId: bigint;
+  address: `0x${string}`;
+  value: bigint;
+  data: `0x${string}`;
+}
 
 export async function delegateToAgent(
   agentAddress: `0x${string}`,
@@ -90,6 +156,56 @@ export async function delegateToAgent(
     abi: DELEGATION_ABI,
     functionName: "delegate",
     args: [agentAddress, authority, permissions, expiryTime],
+  });
+}
+
+export async function delegateWithERC7715Permissions(
+  agentAddress: `0x${string}`,
+  delegatorPrivateKey: `0x${string}`,
+  permissions: ERC7715Permission[]
+): Promise<`0x${string}`> {
+  const { privateKeyToAccount } = await import("viem/accounts");
+  const account = privateKeyToAccount(delegatorPrivateKey);
+
+  if (DELEGATION_REGISTRY === "0x0000000000000000000000000000000000000000") {
+    throw new Error("MetaMask Delegation Registry (ERC-7715) not deployed on this chain");
+  }
+
+  const walletClient = createWalletClient({ account, chain: CHAIN, transport: http(RPC_URL) });
+
+  return walletClient.writeContract({
+    address: DELEGATION_REGISTRY,
+    abi: ERC7715_PERMISSIONS_ABI,
+    functionName: "setPermissions",
+    args: [agentAddress, permissions],
+  });
+}
+
+export async function subDelegate(
+  agentAddress: `0x${string}`,
+  subDelegateAddress: `0x${string}`,
+  delegatorPrivateKey: `0x${string}`,
+  permissions: string[],
+  expiry?: number
+): Promise<`0x${string}`> {
+  const { privateKeyToAccount } = await import("viem/accounts");
+  const account = privateKeyToAccount(delegatorPrivateKey);
+
+  if (DELEGATION_REGISTRY === "0x0000000000000000000000000000000000000000") {
+    throw new Error("MetaMask Delegation Registry not deployed on this chain");
+  }
+
+  const walletClient = createWalletClient({ account, chain: CHAIN, transport: http(RPC_URL) });
+  const defaultExpiry = BigInt(Math.floor(Date.now() / 1000) + 86400 * 7);
+  const expiryTime: bigint = expiry !== undefined ? BigInt(expiry) : defaultExpiry;
+
+  const authority = "0x" + "b".repeat(64) as `0x${string}`;
+
+  return walletClient.writeContract({
+    address: DELEGATION_REGISTRY,
+    abi: DELEGATION_ABI,
+    functionName: "delegate",
+    args: [subDelegateAddress, authority, permissions, expiryTime],
   });
 }
 
@@ -122,17 +238,15 @@ export async function getAgentDelegation(
     return null;
   }
 
-  const { createPublicClient } = await import("viem");
   const publicClient = createPublicClient({ chain: CHAIN, transport: http(RPC_URL) });
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result = (await publicClient.readContract({
       address: DELEGATION_REGISTRY,
       abi: DELEGATION_ABI,
       functionName: "getDelegation",
       args: [delegator, agent],
-    })) as any as [authority: `0x${string}`, permissions: string[], expiry: bigint];
+    })) as unknown as [authority: `0x${string}`, permissions: string[], expiry: bigint];
 
     if (result[0] === "0x" + "0".repeat(64)) return null;
 
@@ -148,6 +262,51 @@ export async function getAgentDelegation(
   }
 }
 
+export async function getERC7715Permissions(
+  delegator: `0x${string}`,
+  delegate: `0x${string}`
+): Promise<ERC7715Permission[]> {
+  if (DELEGATION_REGISTRY === "0x0000000000000000000000000000000000000000") {
+    return [];
+  }
+
+  const publicClient = createPublicClient({ chain: CHAIN, transport: http(RPC_URL) });
+
+  try {
+    const result = (await publicClient.readContract({
+      address: DELEGATION_REGISTRY,
+      abi: ERC7715_PERMISSIONS_ABI,
+      functionName: "getPermissions",
+      args: [delegator, delegate],
+    })) as unknown as ERC7715Permission[];
+    return result;
+  } catch {
+    return [];
+  }
+}
+
 export function hasPermission(delegation: Delegation, permission: string): boolean {
   return delegation.permissions.includes(permission) || delegation.permissions.includes("*");
+}
+
+export function buildClaimPermission(contract: `0x${string}`, selector: `0x${string}`): ERC7715Permission {
+  return {
+    artifactUri: "ipfs://mutual-aid-pool/claim-eval-artifact.json",
+    functionSelector: selector,
+    chainId: BigInt(CHAIN.id),
+    address: contract,
+    value: 0n,
+    data: "0x",
+  };
+}
+
+export function buildPoolPermission(contract: `0x${string}`, selector: `0x${string}`): ERC7715Permission {
+  return {
+    artifactUri: "ipfs://mutual-aid-pool/pool-artifact.json",
+    functionSelector: selector,
+    chainId: BigInt(CHAIN.id),
+    address: contract,
+    value: 0n,
+    data: "0x",
+  };
 }

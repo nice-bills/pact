@@ -216,27 +216,47 @@ server.tool("lido_governance_vote", "Vote on a Lido DAO proposal on Ethereum mai
 });
 
 const dryRunSchema = {
-  operation: z.enum(["stake", "unstake"]).describe("Operation to simulate"),
-  amount: z.string().describe("Amount in ETH"),
+  operation: z.enum(["stake", "unstake", "wrap", "unwrap"]).describe("Operation to simulate"),
+  amount: z.string().describe("Amount in ETH or stETH"),
   network: z.enum(["mainnet", "base"]).describe("Network to simulate on"),
 };
 
-server.tool("lido_dry_run", "Simulate stake or unstake without execution (returns gas estimate)", dryRunSchema, {}, async ({ operation, amount, network }) => {
+server.tool("lido_dry_run", "Simulate stake/unstake/wrap/unwrap without execution (returns gas estimate)", dryRunSchema, {}, async ({ operation, amount, network }) => {
   try {
     const parsed = parseEth(amount);
-    const chain = network === "mainnet" ? ETH_CHAIN : BASE_CHAIN;
-    const rpcUrl = network === "mainnet" ? ETH_RPC : BASE_RPC;
     const client = network === "mainnet" ? ethClient : baseClient;
-    const addr = operation === "stake" ? LIDO_STETH : WITHDRAWAL_QUEUE;
-    const abi = operation === "stake" ? stETHAbi : withdrawalAbi;
-    const fn = operation === "stake" ? "submit" : "requestWithdrawals";
-    const args = operation === "stake" ? ["0x0000000000000000000000000000000000000000" as Address] : [[parsed], "0x0000000000000000000000000000000000000000" as Address];
+
+    let addr: Address, abi: any, fn: string, args: any, value = 0n;
+
+    if (operation === "stake") {
+      addr = LIDO_STETH;
+      abi = stETHAbi;
+      fn = "submit";
+      args = ["0x0000000000000000000000000000000000000000" as Address];
+      value = parsed;
+    } else if (operation === "unstake") {
+      addr = WITHDRAWAL_QUEUE;
+      abi = withdrawalAbi;
+      fn = "requestWithdrawals";
+      args = [[parsed], "0x0000000000000000000000000000000000000000" as Address];
+    } else if (operation === "wrap") {
+      addr = LIDO_WSTETH;
+      abi = wstETHAbi;
+      fn = "wrap";
+      args = [parsed];
+    } else {
+      addr = LIDO_WSTETH;
+      abi = wstETHAbi;
+      fn = "unwrap";
+      args = [parsed];
+    }
+
     const gas = await client.estimateContractGas({
-      address: addr as Address,
+      address: addr,
       abi,
       functionName: fn,
       args,
-      value: operation === "stake" ? parsed : 0n,
+      value,
       account: "0x0000000000000000000000000000000000000001" as Address,
     } as any);
     return { content: [{ type: "text", text: JSON.stringify({ operation, network, amount, gasEstimate: gas.toString(), dryRun: true }) }] };
