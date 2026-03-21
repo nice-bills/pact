@@ -1,4 +1,4 @@
-import { createPublicClient, http } from "viem";
+import { createPublicClient, http, keccak256, toBytes } from "viem";
 import { CHAIN, RPC_URL } from "./config.js";
 
 const ENS_REGISTRY_ADDRESSES: Record<number, `0x${string}`> = {
@@ -64,21 +64,26 @@ function namehash(name: string): `0x${string}` {
   if (name) {
     const labels = name.split(".");
     for (let i = labels.length - 1; i >= 0; i--) {
-      const labelHash = keccak256Label(labels[i]);
-      node = keccak256Node(node, labelHash);
+      const labelBytes = new TextEncoder().encode(labels[i]);
+      const labelHash = keccak256(labelBytes);
+      node = keccak256(Buffer.concat([
+        Buffer.from(node.slice(2), "hex"),
+        Buffer.from(labelHash.slice(2), "hex"),
+      ])) as `0x${string}`;
     }
   }
   return node;
 }
 
-function keccak256Label(label: string): `0x${string}` {
-  const { keccak256 } = require("viem");
-  return keccak256(new TextEncoder().encode(label));
-}
-
-function keccak256Node(a: `0x${string}`, b: `0x${string}`): `0x${string}` {
-  const { keccak256 } = require("viem");
-  return keccak256(a + b.slice(2) as `0x${string}`) as `0x${string}`;
+function reverseNode(address: `0x${string}`): `0x${string}` {
+  const addrBytes = toBytes(address);
+  const reverseName = "addr.reverse";
+  const reverseNameBytes = new TextEncoder().encode(reverseName);
+  const reverseNameHash = keccak256(reverseNameBytes);
+  return keccak256(Buffer.concat([
+    addrBytes,
+    Buffer.from(reverseNameHash.slice(2), "hex"),
+  ])) as `0x${string}`;
 }
 
 export async function resolveEnsName(name: string): Promise<`0x${string}` | null> {
@@ -120,11 +125,12 @@ export async function resolveAddressToEns(address: `0x${string}`): Promise<strin
   const publicClient = createPublicClient({ chain: CHAIN, transport: http(RPC_URL) });
 
   try {
+    const node = reverseNode(address);
     const resolverAddress = await publicClient.readContract({
       address: registryAddress,
       abi: ENS_ABI,
       functionName: "resolver",
-      args: [namehash(address.slice(2).toLowerCase() + ".addr.reverse")],
+      args: [node],
     });
 
     if (resolverAddress === "0x0000000000000000000000000000000000000000") {
@@ -135,7 +141,7 @@ export async function resolveAddressToEns(address: `0x${string}`): Promise<strin
       address: resolverAddress as `0x${string}`,
       abi: PUBLIC_RESOLVER_ABI,
       functionName: "name",
-      args: [namehash(address.slice(2).toLowerCase() + ".addr.reverse")],
+      args: [node],
     });
 
     return name as string;
