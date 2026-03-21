@@ -1,199 +1,236 @@
-# Mutual Aid Pool - Agent Skill
+# Mutual Aid Pool — Agent Skill
 
-## Overview
-This skill enables an AI agent to interact with a mutual aid pool -- a community-managed emergency fund backed by onchain infrastructure. Members stream USDC contributions via Superfluid. Emergency claims go through an AI evaluation + multisig human approval before funds disburse.
+## What This Is
 
-## Protocol Stack
-- **Pool Wallet**: Safe multisig (holds pooled funds)
-- **Contributions**: Superfluid USDCx streams to the Safe address
-- **Claims**: ERC-8183 AgenticCommerce (escrow lifecycle)
-- **Identity**: ERC-8004 (member registry + reputation)
-- **Evaluation**: Any LLM (MiniMax M2, Claude, GPT, GenLayer IC)
-- **Payments**: x402 HTTP payment protocol, Superfluid streams
-- **Yield**: Aave USDC staking (idle pool funds earn yield)
-- **Storage**: IPFS + Filecoin Onchain Cloud (evidence persistence)
-- **Guardrails**: Locus payment guardrails (spending controls on pool agent)
-- **Delegation**: MetaMask Delegation Framework (programmable agent permissions)
-- **Swap**: Uniswap V3 (convert USDC to other tokens)
+A mutual aid pool is a community emergency fund where humans and their AI agents pool money together and vote on legitimate emergency claims. The agent acts for its human — filing claims when the human is inactive, evaluating claims from other members, and signing transactions either on the human's direct instruction or via delegated authority.
 
-## Supported Hackathon Tracks
-- **Open Track ($28,300)** — meta-prize across all partners
-- **Celo ($10,000)** — real-economy agents processing stablecoin transactions
-- **Protocol Labs ($4,004)** — ERC-8004 trust layer for agent identity
-- **Virtuals ($2,000)** — ERC-8183 experimentation
-- **Base ($5,000)** — agent service discoverable and payable on Base
-- **MetaMask ($10,000)** — Delegation Framework for agent authority
-- **Lido ($3,000)** — agent operating budget from yield only
-- **Octant ($3,000)** — claim evaluation as impact evidence collection
-- **OpenServ ($5,000)** — multi-agent coordination with x402 payments
-- **Locus ($3,000)** — payment guardrails for AI spending
-- **ENS ($1,730)** — ENS names for agents and pools
-- **Status L2 ($50)** — deploy on zero-fee L2 with AI component
-- **Filecoin ($2,000)** — storage for agent evidence data
-- **Arkhai ($1,000)** — Alkahest escrow protocol integration
-- **Uniswap ($10,000)** — ERC-8183 + token swapping integration
-- **College ($2,500)** — student-built AI x web3 project
+**The core insight:** No single AI evaluates claims. Each contributor uses their own agent (Claude, GPT, Gemini, etc.). They all deliberate together in a group chat. The agents text their recommendations publicly. The humans decide whether to sign or delegate to their agent.
 
-## Actions
+## Architecture
 
-### 1. Create a Pool
-Create a new mutual aid pool with founding members.
 ```
-POST /pool/create
-{
-  "name": "Buenos Aires Mutual Aid",
-  "foundingMembers": ["0xAlice", "0xBob", "0xCarlos"],
-  "threshold": 2,
-  "monthlyContributionUsd": 5,
-  "chainId": 84532
-}
-```
-This deploys a Safe multisig and registers the pool.
-
-### 2. Join a Pool (via vouching)
-An existing member vouches for a new member.
-```
-POST /pool/join
-{
-  "poolAddress": "0xSafeAddress",
-  "newMember": "0xDiana",
-  "vouchedBy": "0xAlice"
-}
-```
-The new member then opens a Superfluid stream to the pool.
-
-### 3. Open a Contribution Stream
-Start streaming USDCx to the pool wallet.
-```
-POST /pool/stream/open
-{
-  "poolAddress": "0xSafeAddress",
-  "flowRatePerMonth": 5,
-  "token": "USDCx"
-}
-```
-Stream open = active member. Stream closed = no claim access.
-
-### 4. Submit a Claim
-Anyone (member or outsider) can submit with evidence.
-```
-POST /claim/submit
-{
-  "poolAddress": "0xSafeAddress",
-  "claimantAddress": "0xMaria",
-  "amountUsd": 80,
-  "description": "Hospital bill for son's medication",
-  "evidenceIpfsHash": "QmXyz..."
-}
-```
-This creates an ERC-8183 Job with the pool as evaluator.
-
-### 5. Evaluate a Claim (AI Agent)
-The agent reviews evidence and posts a recommendation.
-```
-POST /claim/evaluate
-{
-  "jobId": 1,
-  "recommendation": {
-    "approve": true,
-    "confidence": 87,
-    "reasoning": "Bill matches description, amount reasonable for medication"
-  }
-}
-```
-This is a recommendation only. Humans on the multisig make the final call.
-
-### 6. Approve/Reject a Claim (Multisig)
-Multisig signers vote on the claim.
-```
-POST /claim/approve
-{
-  "jobId": 1,
-  "signerAddress": "0xAlice"
-}
-```
-When threshold signatures are reached, ERC-8183 completes the job and funds move.
-
-### 7. Check Pool Status
-```
-GET /pool/status?address=0xSafeAddress
-Response: {
-  "balance": "500.00 USDC",
-  "members": 20,
-  "activeStreams": 18,
-  "pendingClaims": 1,
-  "totalDisbursed": "1200.00 USDC"
-}
+Maria (human) or Maria's agent
+    │
+    │ submits claim with evidence
+    ▼
+Pool (Safe multisig + ERC-8183)
+    │
+    │ claim posted to group chat
+    ▼
+Group Chat (Discord/Telegram)
+  ├── Alice's agent (Claude): "APPROVE — bill matches, amount reasonable"
+  ├── Bob's agent (GPT): "APPROVE — medical emergency, documented"
+  ├── Carlos's agent (Gemini): "APPROVE — first claim, good standing"
+    │
+    │ each agent recommends to its human
+    ▼
+Humans sign (directly or via delegation)
+    │
+    │ multisig executes → USDC moves to Maria
+    ▼
+x402 pays each contributor's agent for evaluation work
 ```
 
-### 8. Delegate Agent Authority (MetaMask Delegation)
-A pool member delegates limited signing authority to their AI agent.
-```
-POST /delegation/create
-{
-  "agent": "0xAgentAddress",
-  "permissions": ["claim:evaluate", "pool:status"],
-  "expiry": 1735689600
-}
-```
-The agent can only perform actions within its delegated permissions. Spending always requires multisig.
+## How Agents Use This Skill
 
-### 9. Check Spending Guardrails (Locus)
-Check if a proposed payment is within allowed spending limits.
+### Before the Pool Exists
+
+The agent creates the pool on behalf of its human:
+
 ```
-POST /guardrails/check
-{
-  "poolAddress": "0xSafeAddress",
-  "token": "0xUSDC",
-  "amount": 80000000,
-  "recipient": "0xClaimant"
-}
-Response: { "allowed": true } or { "allowed": false, "reason": "Daily limit exceeded" }
+1. Create Safe multisig
+   └── deploySafe(owners, threshold)
+   
+2. Create pool with ENS name (optional)
+   └── pool name: marias-pool.pool.eth
+   
+3. Register pool on ERC-8004
+   └── registerAgent(seed="pool-marias-pool-1234567890")
 ```
 
-### 10. Earn Yield on Pool Funds (Aave/Lido)
-Idle USDC in the pool is staked on Aave to generate yield.
-```
-POST /pool/stake
-{
-  "poolAddress": "0xSafeAddress",
-  "amount": 100000000
-}
-```
-Only yield is available for agent spending. Principal remains locked.
+### Adding Contributors
 
-### 11. Swap Tokens (Uniswap V3)
-Convert pool USDC to other tokens via Uniswap V3.
+When a new member joins:
+
 ```
-POST /pool/swap
-{
-  "poolAddress": "0xSafeAddress",
-  "amountInUsdc": 100,
-  "tokenOut": "0xWETH"
-}
+1. Existing member vouches for them
+   └── vouchForMember(voucher, newMember)
+   
+2. New member sets up Superfluid stream
+   └── openStream(poolAddress, flowRate)
+   
+3. Stream active = active member
 ```
 
-### 12. Upload Evidence to Filecoin
-Store claim evidence on Filecoin Onchain Cloud for persistent, verifiable storage.
+### Filing a Claim
+
+When Maria needs emergency funds:
+
 ```
-POST /evidence/upload
-{
-  "evidenceData": "...", 
-  "filename": "hospital_bill_maria.pdf"
-}
-Response: { "cid": "bafy...", "size": 12345, "hash": "0x..." }
+1. Submit claim (human does this, or their agent acts for them)
+   └── claim submit --pool <address or ens> --amount 80 \
+       --evidence QmXyz... --description "Hospital bill"
+   
+2. Pool creates ERC-8183 job with claim details
+   
+3. Claim posted to group chat:
+   "EMERGENCY CLAIM: Maria needs $80 for hospital medication.
+    Evidence: QmXyz... Submit your evaluation."
 ```
 
-## Reputation
-- Successful claims (completed) = positive signal on ERC-8004
-- Rejected claims = neutral/negative signal
-- Vouching for a fraudster = voucher reputation slashed
-- Contributing consistently = reputation grows over time
+### Evaluating a Claim (Agent Workflow)
 
-## Trust Rules
-- Pool members with active streams get priority processing
-- Outsiders can claim but face higher scrutiny (lower default confidence)
-- Agents with higher ERC-8004 reputation get faster processing
-- No single agent has unilateral spending authority -- multisig always required
-- Spending guardrails (Locus) enforce transaction limits on pool agent
-- Delegated permissions (MetaMask) limit what agents can do on behalf of members
+Each contributor's agent evaluates independently:
+
+```
+1. Read the claim from group chat
+   
+2. Review evidence (fetched from IPFS/Filecoin)
+   
+3. Post recommendation to group chat:
+   "@agent: APPROVE — hospital bill verified, amount reasonable.
+    Confidence: 85%. Reason: Medical emergency, documented evidence."
+   
+   OR:
+   
+   "@agent: DENY — amount exceeds typical medication costs.
+    Confidence: 60%. Reason: No prescription details."
+```
+
+The agent texts publicly so everyone sees the reasoning.
+
+### Signing and Executing
+
+After deliberation:
+
+```
+1. Each agent recommends approve/deny to its human
+   
+2. Human decides:
+   a) Signs directly on Safe (hardware wallet, mobile wallet, etc.)
+   b) Delegates signing to their agent (MetaMask Delegation Framework)
+      └── delegateToAgent(agent, ["claim:approve"], expiry)
+   
+3. When threshold reached → Safe executes → ERC-8183 completes → USDC transfers
+```
+
+### Getting Paid for Evaluation (x402)
+
+After the claim resolves, contributors' agents receive tiny x402 payments:
+
+```
+Agent evaluates claim → posts recommendation → x402 payment received
+```
+
+The payment is micro-level (~$0.01 per evaluation). The agent's human approves these incoming x402 payments.
+
+## CLI Reference
+
+```bash
+# Create a pool
+npx tsx src/cli/index.ts pool create \
+  --name "Buenos Aires Mutual Aid" \
+  --threshold 2 \
+  --members 0xAlice,0xBob \
+  --ens-name marias-pool
+
+# Check pool status (accepts address OR ENS name)
+npx tsx src/cli/index.ts pool status --pool 0xSafe... --ens-name marias-pool.pool.eth
+npx tsx src/cli/index.ts pool status --pool marias-pool.pool.eth
+
+# Sync member streams
+npx tsx src/cli/index.ts pool sync --pool <address>
+
+# Open contribution stream
+npx tsx src/cli/index.ts pool stream-open --pool <address> --flow-rate 5
+
+# Submit a claim
+npx tsx src/cli/index.ts claim submit \
+  --pool 0xSafe... \
+  --amount 80 \
+  --evidence QmXyz \
+  --description "Hospital medication"
+
+# Approve a claim (after deliberation)
+npx tsx src/cli/index.ts claim approve --pool <address> --claim-id 1
+```
+
+## ENS Integration
+
+ENS names make pools discoverable. Instead of `0x4F3B...`, use `marias-pool.pool.eth`.
+
+To resolve an ENS name:
+```
+resolveEnsName("marias-pool.pool.eth")
+→ "0x4F3B..." or null (not registered)
+```
+
+The agent registers ENS names for pools via the ENS registrar on mainnet. This is an optional step — the pool works fine with raw addresses.
+
+## ERC-8004 Identity
+
+Every pool, agent, and human gets an ERC-8004 identity. This creates a portable reputation history:
+
+```
+registerAgent(seed: string)
+→ agentId (e.g., #42)
+
+resolveIdentity(address)
+→ agentId
+
+getAgent(agentId)
+→ { address, parentId, registeredAt }
+```
+
+Positive signals: approved claims, consistent contributions.
+Negative signals: rejected claims, fraudulent vouching.
+
+## x402 Payments
+
+x402 is the HTTP payment protocol. Agents receive tiny payments for their evaluation work:
+
+```
+sendX402Payment(url, { recipient: agentAddress, amount: 1000000 }, maxAmount)
+// 1,000,000 = 1 USDC (6 decimals)
+```
+
+The payment header includes a cryptographic nonce (from crypto.randomBytes) so each payment is unique.
+
+## Yield on Idle Funds (Lido Track)
+
+When the pool has idle USDC sitting in the Safe, it can earn yield via Aave:
+
+```
+stakeUsdc(amount: bigint)     // Supply USDC to Aave
+unstakeUsdc(amount: bigint)   // Withdraw USDC from Aave
+getYieldAccrued()             // View accrued yield
+```
+
+**Key rule from the bounty:** The agent earns its operating budget ONLY from yield. The original deposit is structurally untouchable. The agent can never access principal.
+
+## Chain Support
+
+| Chain | Status | Notes |
+|-------|--------|-------|
+| Avalanche Fuji | ✅ Deployed | ERC-8183 + Safe deployed |
+| Base Sepolia | ✅ Config ready | Deploy with `CHAIN_NAME=base-sepolia` |
+| Celo Alfajores | ⚠️ Config ready | Deploy manually (forge DNS issue) |
+| Status L2 | ⚠️ Config ready | RPC may be unreachable |
+
+## Hackathon Tracks This Aligns With
+
+- **Open Track** ($28,300) — all of the above
+- **Celo** ($10,000) — real-economy stablecoin transactions for unbanked
+- **Protocol Labs** ($4,004) — ERC-8004 trust layer for agent identity
+- **Virtuals** ($2,000) — ERC-8183 experimentation
+- **Base** ($5,000) — service on Base discoverable and payable
+- **MetaMask** ($10,000) — Delegation Framework for agent signing authority
+- **Lido** ($3,000) — agent operating budget from yield only (principal untouchable)
+- **OpenServ** ($5,000) — multi-agent coordination with x402 payments
+- **Octant** ($3,000) — claim evaluation as impact evidence collection
+- **Locus** ($3,000) — payment guardrails for AI spending
+- **ENS** ($1,730) — ENS names for pools and agents
+- **Status L2** ($50) — deploy on zero-fee L2 with AI
+- **Filecoin** ($2,000) — storage for evidence data
+- **Arkhai** ($1,000) — Alkahest escrow protocol integration
+- **College XYZ** ($2,500) — student-built AI x web3
