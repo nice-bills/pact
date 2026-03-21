@@ -282,7 +282,8 @@ export class MutualAidPool {
     if (submission.amountUsd > 10000) throw new Error("Claim amount exceeds maximum of $10,000 per incident");
   }
   async registerIdentity(seed?: string): Promise<`0x${string}`> {
-    if (ERC8004_IDENTITY_REGISTRY === "0x0000000000000000000000000000000000000000") {
+    const zero = "0x0000000000000000000000000000000000000000" as `0x${string}`;
+    if (ERC8004_IDENTITY_REGISTRY === zero) {
       throw new Error("ERC-8004 not supported on this chain");
     }
     const agentSeed = seed ?? `pool-${this.config.safeAddress}-${Date.now()}`;

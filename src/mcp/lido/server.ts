@@ -28,9 +28,9 @@ const ethClient = createPublicClient({ chain: ETH_CHAIN, transport: http() });
 const baseClient = createPublicClient({ chain: BASE_CHAIN, transport: http() });
 
 const LIDO_STETH = "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84";
-const LIDO_WSTETH = "0x8F1fE9d6D2FdDd83d95cC1f2aF6c2B3d4a5e6f7";
+const LIDO_WSTETH = "0xc1CBa3fCea344f92D9239c08C0568f6F2F0ee452";
 const WITHDRAWAL_QUEUE = "0x889edC2eDab5f40e902b864aD4D7AdE8E412F9B1";
-const LIDO_DAO = "0x2e5D5C4b5a3f7B4E8C1d2F9a6B3c4D5E6F7a8B9C";
+const LIDO_ARAGON_VOTING = "0x2e59A20f205bB85a89C53f1936454680651E618e";
 
 const stETHAbi = [
   { name: "submit", type: "function", inputs: [{ name: "_referral", type: "address" }], outputs: [{ type: "uint256" }], stateMutability: "payable" },
@@ -204,7 +204,7 @@ server.tool("lido_governance_vote", "Vote on a Lido DAO proposal on Ethereum mai
     const account = privateKeyToAccount(privateKey as `0x${string}`);
     const wallet = createWalletClient({ account, chain: ETH_CHAIN, transport: http(ETH_RPC) });
     const hash = await wallet.writeContract({
-      address: LIDO_DAO as Address,
+      address: LIDO_ARAGON_VOTING as Address,
       abi: govAbi,
       functionName: "vote",
       args: [BigInt(proposalId), support],

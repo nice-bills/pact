@@ -1,14 +1,4 @@
-import { CHAIN_NAME } from "../core/config.js";
-
-export const ERC8004_IDENTITY_REGISTRY = (() => {
-  if (CHAIN_NAME === "avalanche-fuji") {
-    return "0x00000000000000000000000000000000008004" as const;
-  }
-  if (CHAIN_NAME === "base-sepolia") {
-    return "0x00000000000000000000000000000000008004" as const;
-  }
-  return "0x0000000000000000000000000000000000000000" as const;
-})();
+export { ERC8004_IDENTITY_REGISTRY } from "../core/config.js";
 
 export interface ERC8004Agent {
   agentId: bigint;

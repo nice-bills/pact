@@ -62,7 +62,7 @@ export async function poolCreate(opts: {
   console.log(`\nPool Safe deployed at: ${safeAddress}`);
   console.log(`(Counterfactual — first transaction will deploy it)`);
 
-  if (ERC8004_IDENTITY_REGISTRY !== "0x0000000000000000000000000000000000000000") {
+  if (ERC8004_IDENTITY_REGISTRY.length > 1) {
     try {
       const { registerERC8004Agent } = await import("../../core/erc8004.js");
       const seed = `pool-${opts.name}-${Date.now()}`;

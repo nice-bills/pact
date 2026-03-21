@@ -22,12 +22,12 @@ contract StETHTreasury {
     mapping(address => mapping(address => uint256)) public spentThisPeriod;
     mapping(address => uint256) public periodStart;
 
-    uint256 public constant ANNUAL_YIELD_BPS = 500; // 5% APY estimate (simplified)
+    uint256 public constant ANNUAL_YIELD_BPS = 500; // 5% APY estimate — DEMO ONLY; replace with real Lido APY oracle for production
     uint256 public constant BPS = 10000;
     uint256 public constant SECONDS_PER_YEAR = 365 days;
 
     address public immutable HUMAN;
-    address public immutable AGENT;
+    address public agent;
 
     event Deposit(address indexed human, uint256 amount, uint256 yieldAccrued);
     event YieldWithdrawn(address indexed agent, address indexed recipient, uint256 amount);
@@ -42,7 +42,7 @@ contract StETHTreasury {
         stETH = IERC20(_stETH);
         wstETH = IERC20(_wstETH);
         HUMAN = msg.sender;
-        AGENT = _agent;
+        agent = _agent;
     }
 
     /// @notice Human deposits stETH as principal. Yield accrues over time.
@@ -61,7 +61,7 @@ contract StETHTreasury {
     /// @param recipient Address to send the yield funds
     /// @param amount Amount of yield to withdraw
     function spend(address recipient, uint256 amount) external {
-        require(msg.sender == AGENT, "Only agent can spend");
+        require(msg.sender == agent, "Only agent can spend");
         _accrue(HUMAN);
 
         require(amount <= yieldBalance[HUMAN], "Insufficient yield balance");
@@ -84,7 +84,7 @@ contract StETHTreasury {
         yieldBalance[HUMAN] -= amount;
         require(stETH.transfer(recipient, amount), "stETH transfer failed");
 
-        emit YieldWithdrawn(AGENT, recipient, amount);
+        emit YieldWithdrawn(agent, recipient, amount);
     }
 
     /// @notice Agent queries how much yield is available to spend.
@@ -122,14 +122,18 @@ contract StETHTreasury {
     /// @param newAgent New agent wallet address
     function setAgent(address newAgent) external {
         require(msg.sender == HUMAN, "Only human can set agent");
-        AGENT == newAgent; // Enforce new agent
+        require(newAgent != address(0), "Agent cannot be zero address");
+        agent = newAgent;
         emit AgentSet(HUMAN, newAgent);
     }
 
     /// @notice Convert wstETH to stETH internally (for L2 deployments using wstETH).
     /// @param amount Amount of wstETH to unwrap to stETH
     function unwrapWstEth(uint256 amount) internal {
-        // In production: call wstETH.unwrap()
+        (bool success, ) = address(wstETH).call(
+            abi.encodeWithSignature("unwrap(uint256)", amount)
+        );
+        require(success, "wstETH unwrap failed");
     }
 
     function _accrue(address user) internal {

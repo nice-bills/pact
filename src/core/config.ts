@@ -100,7 +100,7 @@ const sfKey = (Object.keys(SUPERFLUID_CONFIG) as SuperfluidKey[]).find(k => k ==
 export const SUPERFLUID_HOST = SUPERFLUID_CONFIG[sfKey]?.host ?? null;
 export const USDCX_ADDRESS = SUPERFLUID_CONFIG[sfKey]?.token ?? null;
 
-export const ERC8004_IDENTITY_REGISTRY = CHAIN_CONFIG.erc8004 ?? "0x0000000000000000000000000000000000000000";
+export const ERC8004_IDENTITY_REGISTRY: `0x${string}` = (CHAIN_CONFIG.erc8004 ?? "0x0000000000000000000000000000000000000000") as `0x${string}`;
 
 export const AGENTIC_COMMERCE_ADDRESS = process.env.AGENTIC_COMMERCE_ADDRESS ?? "";
 export const POOL_SAFE_ADDRESS = process.env.POOL_SAFE_ADDRESS ?? "";

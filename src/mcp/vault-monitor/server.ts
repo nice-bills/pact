@@ -1,8 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod/v3";
-import { createPublicClient, createWalletClient, http, erc20Abi } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
+import { createPublicClient, http, erc20Abi } from "viem";
 import type { Address } from "viem";
 
 const BASE_RPC = process.env.BASE_SEPOLIA_RPC ?? "https://sepolia.base.org";
@@ -16,6 +15,11 @@ const BASE_CHAIN = {
 
 const baseClient = createPublicClient({ chain: BASE_CHAIN, transport: http() });
 
+// Lido Earn uses Morpho under the hood. Currently there is no official Lido Earn vault
+// deployment on Base Sepolia. These addresses will be populated once Lido deploys
+// Earn product on Base Sepolia. Track at: https://docs.lido.fi/earn/
+// Morpho on Base mainnet vault factory (V2): 0xA1D94F746dEfa1928926b84fB2596c06926C0405
+// Morpho on Base mainnet: 0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb
 const MORPHO_SUPPLY_ADDRESS = "0x0000000000000000000000000000000000000000";
 const EARN_USD_ADDRESS = "0x0000000000000000000000000000000000000000";
 
@@ -29,7 +33,7 @@ interface VaultPosition {
 }
 
 const vaultAbi = [
-  { name: "-supply", type: "function", inputs: [{ name: "asset", type: "address" }, { name: "amount", type: "uint256" }], outputs: [], stateMutability: "nonpayable" },
+  { name: "supply", type: "function", inputs: [{ name: "asset", type: "address" }, { name: "amount", type: "uint256" }], outputs: [], stateMutability: "nonpayable" },
   { name: "withdraw", type: "function", inputs: [{ name: "asset", type: "address" }, { name: "amount", type: "uint256" }], outputs: [], stateMutability: "nonpayable" },
   { name: "balanceOf", type: "function", inputs: [{ name: "account", type: "address" }], outputs: [{ type: "uint256" }], stateMutability: "view" },
   { name: "netAPY", type: "function", inputs: [], outputs: [{ type: "int256" }], stateMutability: "view" },
@@ -46,8 +50,20 @@ const monitorSchema = {
   address: z.string().describe("Wallet address to monitor"),
 };
 
-server.tool("vault_position", "Monitor a wallet's Lido Earn vault positions", monitorSchema, {}, async ({ address }) => {
+server.tool("vault_position", "Monitor a wallet's Lido Earn vault positions on Base Sepolia (ETH and USDC markets)", monitorSchema, {}, async ({ address }) => {
   try {
+    if (MORPHO_SUPPLY_ADDRESS === "0x0000000000000000000000000000000000000000" || EARN_USD_ADDRESS === "0x0000000000000000000000000000000000000000") {
+      return {
+        content: [{ type: "text", text: JSON.stringify({
+          address,
+          network: "Base Sepolia",
+          status: "unavailable",
+          message: "Lido Earn is not yet deployed on Base Sepolia. Once deployed, this will return ETH and USDC vault positions. Track deployment at https://docs.lido.fi/earn/",
+          positions: [],
+        }) }],
+      };
+    }
+
     const positions: VaultPosition[] = [];
 
     const [ethBalance, usdcBalance, ethNetApy, usdcNetApy] = await Promise.all([
@@ -84,7 +100,7 @@ server.tool("vault_position", "Monitor a wallet's Lido Earn vault positions", mo
       ? `You have ${positions.length} vault position(s). Total value: ${formatToken(totalValue, 18)} ETH equivalent.`
       : "No vault positions found for this address.";
 
-    return { content: [{ type: "text", text: JSON.stringify({ address, positions, summary }) }] };
+    return { content: [{ type: "text", text: JSON.stringify({ address, network: "Base Sepolia", positions, summary }) }] };
   } catch (e) {
     return { content: [{ type: "text", text: `Position query failed: ${e}` }], isError: true };
   }
@@ -97,13 +113,33 @@ const alertSchema = {
   email: z.string().optional().describe("Email for alerts"),
 };
 
-server.tool("vault_alert", "Set a yield floor alert for a vault position", alertSchema, {}, async ({ address, yieldFloor, telegramChatId, email }) => {
+server.tool("vault_alert", "Set a yield floor alert for a vault position on Base Sepolia", alertSchema, {}, async ({ address, yieldFloor, telegramChatId, email }) => {
+  if (MORPHO_SUPPLY_ADDRESS === "0x0000000000000000000000000000000000000000") {
+    return {
+      content: [{ type: "text", text: JSON.stringify({
+        success: false,
+        message: "Lido Earn is not yet deployed on Base Sepolia. Alerts will activate once the vault is available. Track deployment at https://docs.lido.fi/earn/",
+        address,
+        yieldFloor,
+      }) }],
+    };
+  }
   const alertConfig = { address, yieldFloor: parseFloat(yieldFloor), telegramChatId, email, active: true };
   console.error(`[VAULT_ALERT] Configured: ${JSON.stringify(alertConfig)}`);
   return { content: [{ type: "text", text: JSON.stringify({ success: true, alertConfig, message: `Alert set for ${address} with yield floor ${yieldFloor}%. Monitoring vault positions.` }) }] };
 });
 
-server.tool("vault_rebalance", "Suggest vault rebalancing based on yield differentials", monitorSchema, {}, async ({ address }) => {
+server.tool("vault_rebalance", "Suggest vault rebalancing based on yield differentials on Base Sepolia", monitorSchema, {}, async ({ address }) => {
+  if (MORPHO_SUPPLY_ADDRESS === "0x0000000000000000000000000000000000000000" || EARN_USD_ADDRESS === "0x0000000000000000000000000000000000000000") {
+    return {
+      content: [{ type: "text", text: JSON.stringify({
+        status: "unavailable",
+        message: "Lido Earn is not yet deployed on Base Sepolia. Rebalancing will be available once ETH and USDC vaults are live. Track deployment at https://docs.lido.fi/earn/",
+        advice: "Check back after Lido Earn launches on Base Sepolia.",
+      }) }],
+    };
+  }
+
   try {
     const [ethBalance, usdcBalance] = await Promise.all([
       baseClient.readContract({ address: MORPHO_SUPPLY_ADDRESS as Address, abi: erc20Abi, functionName: "balanceOf", args: [address as Address] }) as Promise<bigint>,
