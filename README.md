@@ -4,7 +4,7 @@ A community emergency fund where agents act for their humans. No centralized AI.
 
 **What it does:** Humans + their AI agents pool USDC via Superfluid streams. When someone has an emergency, they file a claim. All contributing agents evaluate it together in a group chat — plain text, public deliberation. Each agent recommends to its human. Humans sign directly or delegate to their agent. Safe multisig executes. x402 pays contributors for their work.
 
-**Deployed on:** Avalanche Fuji (ERC-8183 + Safe), Celo Alfajores, Base Sepolia
+**Deployed on:** Base Sepolia (ERC-8183 at `0x76Dd9C55D9a2e4B36219b4cC749deEF8324333e6`)
 
 ## How It Works
 
@@ -78,37 +78,62 @@ npx tsx src/cli/index.ts pool status --pool 0xSafeAddress
 
 **Status Network deploy (gasless L2, Chain ID: 1660990954):**
 ```bash
-npm run deploy:status   # Deploy StatusAgent contract
+npm run deploy:status   # Deploy StatusAgent contract (requires Status Network Sepolia ETH)
 npm run deploy:gasless  # Execute gasless tx (gas=0, costs nothing)
 ```
+
+### Status Network Bounty — Qualifying Criteria
+
+> ⚠️ **Bridge issue:** The Status Network Sepolia bridge requires mainnet ETH for anti-spam (not available in this environment). StatusAgent.sol compiles correctly with solc 0.8.19 (PUSH0-free), deploy scripts are ready, and the RPC (`https://public.sepolia.rpc.status.network`, chain ID 1660990954) is verified accessible.
+
+**Deployed contract:** StatusAgent.sol (agent registry on Status Network Sepolia)
+- StatusAgent.sol: `contracts/status/StatusAgent.sol` — compiles clean, PUSH0-free
+- Deploy cmd: `npm run deploy:status` (requires Status Network Sepolia ETH from faucet)
+- Explorer: `https://sepoliascan.status.network`
+
+**Gasless transaction (gas = 0):**
+- cmd: `npm run deploy:gasless`
+- Status Network gas price = 0 confirmed — tx costs nothing
+- Explorer: `https://sepoliascan.status.network/tx/<tx-hash>`
+
+**AI Agent component:**
+- DevSpot agent manifest: `agent/agent.json`
+- Agent execution log: `agent/agent_log.json`
+- Lido MCP server: `src/mcp/lido/server.ts`
+- Vault Monitor MCP: `src/mcp/vault-monitor/server.ts`
+- MCP skill docs: `src/skills/lido.skill.md`
+- Agents use ERC-8004 identity and x402 payments for agent work
+
+> **To deploy on Status Network:** Obtain Status Network Sepolia ETH from faucet.status.network (requires 0.01 ETH on mainnet), then run `npm run deploy:status && npm run deploy:gasless`
 
 ## Chain Configuration
 
 ```bash
-export CHAIN_NAME=avalanche-fuji   # deployed here (x402 + ERC-8004)
-export CHAIN_NAME=base-sepolia    # deployed here (x402 + ERC-8004)
-export CHAIN_NAME=celo-alfajores   # deployed here (x402 + ERC-8004)
+export CHAIN_NAME=base-sepolia    # ✅ deployed: ERC-8183 at 0x76Dd9C55D9a2e4B36219b4cC749deEF8324333e6
+export CHAIN_NAME=avalanche-fuji   # ready (x402 + ERC-8004)
+export CHAIN_NAME=celo-alfajores   # ready (DNS issue — deploy when available)
+export CHAIN_NAME=status-sepolia   # ready (bridge/faucet blocked — see Status Network section)
 ```
 
 ## Supported Hackathon Tracks
 
 | Track | Prize | Status |
 |-------|-------|--------|
-| **Synthesis Open Track** | $28,134 | Qualifies |
-| **Best Agent on Celo** | $5,000 | Deployed on Celo Alfajores |
+| **Synthesis Open Track** | $28,134 | ✅ Qualifies — full stack implemented |
+| **Best Agent on Celo** | $5,000 | Celo Alfajores configured (deploy when RPC available) |
 | **Best Use of Delegations** | $5,000 | MetaMask delegation in `src/core/delegation.ts` |
-| **Agentic Finance (Uniswap API)** | $5,000 | Uniswap quoter in `src/core/uniswap.ts` |
-| **Agent Services on Base** | $5,000 | x402 enabled on Base Sepolia |
+| **Agentic Finance (Uniswap API)** | $5,000 | Uniswap quoter in `src/core/uniswap.ts` (per-chain) |
+| **Agent Services on Base** | $5,000 | ✅ Deployed on Base Sepolia: `0x76Dd9C...` |
 | **Ship Something Real with OpenServ** | $4,500 | OpenServ integration in `src/core/openserv.ts` |
 | **Let the Agent Cook (PL)** | $4,000 | ERC-8004 + autonomous agent + agent.json |
-| **Agents With Receipts (PL)** | $4,000 | ERC-8004 deployed + agent.json + agent_log.json |
+| **Agents With Receipts (PL)** | $4,000 | ERC-8004 configured + agent.json + agent_log.json |
 | **Best Use of Locus** | $3,000 | Locus guardrails in `src/core/locus.ts` |
 | **Lido MCP** | $5,000 | MCP server in `src/mcp/lido/server.ts` + lido.skill.md |
-| **stETH Agent Treasury** | $3,000 | Contract in `src/contracts/treasury/StETHTreasury.sol` |
+| **stETH Agent Treasury** | $3,000 | ✅ Full implementation + forge tests |
 | **Vault Position Monitor** | $1,500 | MCP server in `src/mcp/vault-monitor/server.ts` |
-| **ERC-8183 Open Build** | $2,000 | Full implementation, deployed |
+| **ERC-8183 Open Build** | $2,000 | ✅ Full implementation deployed on Base Sepolia |
 | **Best Use of Agentic Storage** | $2,000 | Filecoin in `src/core/filecoin.ts` |
-| **Status Network ($50 min)** | $2,000 pool | Chain ID 1660990954 — deploy + gasless tx (gas=0) |
+| **Status Network ($50 min)** | $2,000 pool | ⚠️ Contract ready — blocked on bridge/faucet |
 | **ENS Identity** | $600 | ENS resolution in `src/core/ens.ts` |
 | **ENS Communication** | $600 | ENS resolution in `src/core/ens.ts` |
 | **Escrow Ecosystem Extensions** | $450 | Arkhai in `src/core/arkhai.ts` |
