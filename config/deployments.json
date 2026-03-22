@@ -21,7 +21,16 @@
     "chainId": 44787,
     "erc8183": "0x60ae0caa3b0edc5e12f02be8c82C0e4ea7bd6eec",
     "safe": "0x2525772E53955B5C099d62BBA66BF94EE9dc108f",
-    "rpc": "https://alfajores-forno.celo-testnet.org"
+    "rpc": "https://alfajores-forno.celo-testnet.org",
+    "note": "SUNSET Sept 2025 - use celo-sepolia instead"
+  },
+  "celo-sepolia": {
+    "chainId": 11142220,
+    "erc8183": "0x77107B62a9149F0073F40846af477fa6f9E3543A",
+    "safe": null,
+    "rpc": "https://forno.celo-sepolia.celo-testnet.org",
+    "deployTx": "0xf67c32d1d1ed13d4373edc6c9b7f808226a69cb2233c8f386bb412be78b939ab",
+    "usdc": "0x01C5C0122039549AD1493B8220cABEdD739BC44E"
   },
   "status-sepolia": {
     "chainId": 1660990954,
@@ -29,5 +38,13 @@
     "rpc": "https://public.sepolia.rpc.status.network",
     "deployTx": "0xd0ba070c8bebaf061045f1220fae9357e41c7470d71d4fb609a7e1d873e5bf1b",
     "gaslessTx": "0x9a963bf3aa4d81962d0f6f7350c7b460277e20e6a1edebc5e62a3d3651f78574"
+  },
+  "genlayer": {
+    "chainId": 61999,
+    "network": "testnet-bradbury",
+    "rpc": "https://studio.genlayer.com/api",
+    "claimEvaluator": "PENDING_DEPLOYMENT",
+    "contract": "contracts/genlayer/claim_evaluator.py",
+    "description": "GenLayer intelligent contract — LLM-powered claim evaluation via Optimistic Democracy consensus"
   }
 }

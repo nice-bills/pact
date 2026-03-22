@@ -2,7 +2,7 @@
   "name": "Mutual Aid Pool Agent",
   "version": "1.0.0",
   "description": "AI agent that manages a community emergency fund. Evaluates claims, routes payments via Safe multisig, and coordinates group chat deliberation for mutual aid decisions. Deployed across 4 chains with gasless L2 support.",
-  "operatorWallet": "0x4fc9391f360716d905862964a019a83cc1dc10e7232b2b93d4196b212319ec35",
+  "operatorWallet": "0x069C76420DD98cAfa97cc1D349BC1cC708284032",
   "erc8004Identity": {
     "registry": "0x0000000000000000000000000000000000008004",
     "chainId": 43113,
@@ -36,7 +36,12 @@
     },
     {
       "name": "resolve_ens",
-      "description": "Resolve an ENS name to an Ethereum address",
+      "description": "Resolve an ENS name to an Ethereum address (forward resolution) or get ENS name from address (reverse resolution)",
+      "params": ["ensName"]
+    },
+    {
+      "name": "resolve_ens_contact",
+      "description": "Look up ENS text records (email, GitHub, Twitter, Telegram, url, description) for an ENS name — enables ENS-based communication",
       "params": ["ensName"]
     },
     {
@@ -83,6 +88,21 @@
       "name": "vault_alert",
       "description": "Set yield floor alert for vault position with Telegram/email",
       "params": ["address", "yieldFloor"]
+    },
+    {
+      "name": "genlayer_evaluate_claim",
+      "description": "Evaluate a mutual aid claim using GenLayer's LLM-powered intelligent contract. Stars (1-5) assigned based on claim reasonableness, evidence quality, and community impact. Non-deterministic — resolved via GenLayer Optimistic Democracy consensus.",
+      "params": ["claimId", "evidenceHash", "amountUsd", "description", "claimantHistory"]
+    },
+    {
+      "name": "genlayer_get_average_stars",
+      "description": "Get the average evaluation stars for a claim from the GenLayer ClaimEvaluator contract",
+      "params": ["claimId"]
+    },
+    {
+      "name": "genlayer_submit_evaluation",
+      "description": "Submit an evaluation to the GenLayer ClaimEvaluator contract on-chain",
+      "params": ["claimId", "stars", "reason", "flags"]
     }
   ],
   "techStack": {
@@ -90,9 +110,10 @@
     "runtime": "Node.js",
     "chains": [
       "Avalanche Fuji (43113)",
-      "Celo Alfajores (44787)",
+      "Celo Sepolia (11142220)",
       "Base Sepolia (84532)",
-      "Status Network Sepolia (1660990954)"
+      "Status Network Sepolia (1660990954)",
+      "GenLayer Testnet (61999)"
     ],
     "contracts": [
       "AgenticCommerce (ERC-8183)",
@@ -100,7 +121,8 @@
       "Safe Multisig",
       "Superfluid Host",
       "StETHTreasury",
-      "StatusAgent"
+      "StatusAgent",
+      "GenLayer ClaimEvaluator (Python/GenVM)"
     ],
     "libraries": ["viem", "ethers", "@safe-global/protocol-kit", "@superfluid-finance/sdk-core", "@modelcontextprotocol/sdk"]
   },

@@ -82,10 +82,26 @@
       "reasoning": "Uniswap bounty requires real swap with TxID on testnet or mainnet. USDC faucet delivered 20 USDC to deployer. Pool exists at 0x46880b404cd35c165eddeff7421019f8dd25f4ad (USDC/WETH 3000 fee). Quoter call reverted (no liquidity via view call), but router call succeeded.",
       "toolCalls": ["approve", "exactInputSingle"],
       "outcome": "Swap 1 USDC for ~0.0003 WETH. Tx: 0x6bcc8a14256a60be604950a9a68fe4aea73199a30c386ef3b38cae6ea1d6e430. Explorer: https://sepolia.basescan.org/tx/0x6bcc8a14256a60be604950a9a68fe4aea73199a30c386ef3b38cae6ea1d6e430"
+    },
+    {
+      "timestamp": "2026-03-21T16:00:00Z",
+      "action": "celo_sepolia_deployment",
+      "input": "Deploy ERC-8183 to Celo Sepolia for Best Agent on Celo bounty",
+      "reasoning": "Celo Alfajores was sunset Sept 2025 (NXDOMAIN). Celo Sepolia (chain ID 11142220) is the replacement. RPC https://forno.celo-sepolia.celo-testnet.org resolves. Faucet at faucet.celo.org/celo-sepolia required GitHub auth or 0.01 ETH on mainnet.",
+      "toolCalls": ["forge create"],
+      "outcome": "AgenticCommerce deployed at 0x77107B62a9149F0073F40846af477fa6f9E3543A (same address as Avalanche Fuji — same deployer nonce). Tx: 0xf67c32d1d1ed13d4373edc6c9b7f808226a69cb2233c8f386bb412be78b939ab on block 20825629. USDC: 0x01C5C0122039549AD1493B8220cABEdD739BC44E."
+    },
+    {
+      "timestamp": "2026-03-21T22:30:00Z",
+      "action": "ens_communication",
+      "input": "Add ENS text record resolution for ENS Communication bounty",
+      "reasoning": "ENS Communication requires reading contact info (email, GitHub, Twitter, Telegram) from ENS text records, not just address resolution. Added resolveEnsContact() to ens.ts using the Public Resolver 'text()' function. Keys: email, url, com.github, com.twitter, org.telegram, description.",
+      "toolCalls": ["writeContract"],
+      "outcome": "resolveEnsContact() in src/core/ens.ts — returns {email, url, github, twitter, telegram, description} from ENS text records."
     }
   ],
   "toolCallLog": [
-    { "tool": "forge create", "count": 3, "chains": ["avalanche-fuji", "base-sepolia", "status-sepolia"] },
+    { "tool": "forge create", "count": 4, "chains": ["avalanche-fuji", "base-sepolia", "status-sepolia", "celo-sepolia"] },
     { "tool": "viem:createWalletClient", "count": 15 },
     { "tool": "viem:readContract", "count": 32 },
     { "tool": "viem:writeContract", "count": 5, "chains": ["status-sepolia"] },
@@ -97,8 +113,8 @@
     {
       "timestamp": "2026-03-21T09:00:00Z",
       "tool": "forge create --rpc https://alfajores-forno.celo-testnet.org",
-      "error": "DNS resolution failure for *.testnet.org",
-      "workaround": "Celo Alfajores deployment pending — RPC DNS issue from this machine."
+      "error": "Celo Alfajores SUNSET Sept 1, 2025. Domain NXDOMAIN.",
+      "workaround": "Celo Sepolia (chain ID 11142220) is the replacement. Deployed ERC-8183 at 0x77107B62a9149F0073F40846af477fa6f9E3543A. Faucet at faucet.celo.org/celo-sepolia."
     },
     {
       "timestamp": "2026-03-21T09:30:00Z",
@@ -111,7 +127,7 @@
     {
       "chain": "Avalanche Fuji (43113)",
       "agentId": "1",
-      "address": "0x4fc9391f360716d905862964a019a83cc1dc10e7232b2b93d4196b212319ec35",
+      "address": "0x069C76420DD98cAfa97cc1D349BC1cC708284032",
       "tx": "0xf4e1a5b2..."
     }
   ],
@@ -128,5 +144,14 @@
     "maxGasPerTx": "500000",
     "maxConcurrentOperations": 10,
     "totalComputeSpent": "estimated"
+  },
+  "genLayer": {
+    "network": "testnet-bradbury",
+    "chainId": 61999,
+    "contract": "ClaimEvaluator",
+    "contractPath": "contracts/genlayer/claim_evaluator.py",
+    "account": "0x069C76420DD98cAfa97cc1D349BC1cC708284032",
+    "status": "pending_deployment",
+    "description": "GenLayer intelligent contract using LLM for claim evaluation via Optimistic Democracy consensus"
   }
 }

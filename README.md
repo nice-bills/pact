@@ -4,7 +4,7 @@ A community emergency fund where agents act for their humans. No centralized AI.
 
 **What it does:** Humans + their AI agents pool USDC via Superfluid streams. When someone has an emergency, they file a claim. All contributing agents evaluate it together in a group chat — plain text, public deliberation. Each agent recommends to its human. Humans sign directly or delegate to their agent. Safe multisig executes. x402 pays contributors for their work.
 
-**Deployed on:** Avalanche Fuji (ERC-8183 at `0x77107B62a9149F0073F40846af477fa6f9E3543A`), Base Sepolia (ERC-8183 at `0x76Dd9C55D9a2e4B36219b4cC749deEF8324333e6`)
+**Deployed on:** Avalanche Fuji, Celo Sepolia, Base Sepolia, Status Network Sepolia
 
 ## How It Works
 
@@ -38,12 +38,24 @@ x402 pays each evaluator's agent
 - **ERC-8183** — claim lifecycle (create job → fund → submit → complete/reject)
 - **ERC-8004** — agent identity + portable reputation
 - **x402** — micro-payments to agents for evaluation work
-- **ENS** — discoverable pool names instead of hex addresses
+- **ENS** — discoverable pool names + contact info (email, GitHub, Twitter, Telegram)
 - **Lido stETH** — yield on idle pool funds
-- **MetaMask Delegation** — programmable agent signing authority
+- **MetaMask Delegation** — programmable agent signing authority (ERC-7715)
 - **Locus** — spending guardrails on pool agent
 - **Uniswap V3** — token swaps for pool rebalancing
 - **Filecoin** — evidence storage for claims
+- **Arkhai** — escrow protocol for secure conditional payments
+- **OpenServ** — agent service marketplace for claim workflow automation
+- **Status Network** — gasless agent registry (gas = 0 per tx)
+
+## Chain Configuration
+
+```bash
+export CHAIN_NAME=avalanche-fuji   # ERC-8183: 0x77107B62a9149F0073F40846af477fa6f9E3543A
+export CHAIN_NAME=base-sepolia    # ERC-8183: 0x76Dd9C55D9a2e4B36219b4cC749deEF8324333e6
+export CHAIN_NAME=celo-sepolia    # ERC-8183: 0x77107B62a9149F0073F40846af477fa6f9E3543A
+export CHAIN_NAME=status-sepolia  # StatusAgent: 0x3f4D1B21251409075a0FB8E1b0C0A30B23f05653
+```
 
 ## Quick Start
 
@@ -76,112 +88,73 @@ npx tsx src/cli/index.ts claim submit \
 npx tsx src/cli/index.ts pool status --pool 0xSafeAddress
 ```
 
-**Status Network deploy (gasless L2, Chain ID: 1660990954):**
-```bash
-npm run deploy:status   # Deploy StatusAgent contract
-npm run deploy:gasless  # Execute gasless tx (gas=0, costs nothing)
-```
+## Agent Tools
 
-### Status Network Bounty — Qualifying Criteria ✅
+Agents use these tools (defined in `agent/agent.json`):
 
-**Deployed contract:** StatusAgent.sol (agent registry on Status Network Sepolia)
-- **Contract:** [`0x3f4D1B21251409075a0FB8E1b0C0A30B23f05653`](https://sepoliascan.status.network/address/0x3f4D1B21251409075a0FB8E1b0C0A30B23f05653)
-- **Deploy tx:** [`0xd0ba070c8bebaf061045f1220fae9357e41c7470d71d4fb609a7e1d873e5bf1b`](https://sepoliascan.status.network/tx/0xd0ba070c8bebaf061045f1220fae9357e41c7470d71d4fb609a7e1d873e5bf1b)
-
-**Gasless transaction (gas = 0):**
-- **Tx hash:** [`0x9a963bf3aa4d81962d0f6f7350c7b460277e20e6a1edebc5e62a3d3651f78574`](https://sepoliascan.status.network/tx/0x9a963bf3aa4d81962d0f6f7350c7b460277e20e6a1edebc5e62a3d3651f78574)
-- **Gas used:** 158,586 | **Effective gas price:** 0 wei | **Cost:** $0.00 ✅
-
-**AI Agent component:**
-- DevSpot agent manifest: `agent/agent.json`
-- Agent execution log: `agent/agent_log.json`
-- Lido MCP server: `src/mcp/lido/server.ts`
-- Vault Monitor MCP: `src/mcp/vault-monitor/server.ts`
-- Agents use ERC-8004 identity and x402 payments for agent work
-
-## Chain Configuration
-
-```bash
-export CHAIN_NAME=avalanche-fuji   # ✅ deployed: ERC-8183 at 0x77107B62a9149F0073F40846af477fa6f9E3543A
-export CHAIN_NAME=base-sepolia    # ✅ deployed: ERC-8183 at 0x76Dd9C55D9a2e4B36219b4cC749deEF8324333e6
-export CHAIN_NAME=celo-alfajores   # ready (DNS issue — deploy when available)
-export CHAIN_NAME=status-sepolia   # ✅ deployed: StatusAgent at 0x3f4D1B21251409075a0FB8E1b0C0A30B23f05653
-```
-
-## Supported Hackathon Tracks
-
-| Track | Prize | Status |
-|-------|-------|--------|
-| **Synthesis Open Track** | $28,134 | ✅ Qualifies — full stack implemented |
-| **Best Agent on Celo** | $5,000 | Celo Alfajores configured (DNS issue — deploy when RPC available) |
-| **Best Use of Delegations** | $5,000 | ✅ ERC-7715 + sub-delegations + granular permissions in `src/core/delegation.ts` |
-| **Agentic Finance (Uniswap API)** | $5,000 | ✅ Swap on Base Sepolia: [`0x6bcc8a...`](https://sepolia.basescan.org/tx/0x6bcc8a14256a60be604950a9a68fe4aea73199a30c386ef3b38cae6ea1d6e430) — 1 USDC → WETH, pool at `0x46880b...` |
-| **Agent Services on Base** | $5,000 | ✅ Deployed on Base Sepolia: `0x76Dd9C...` |
-| **Ship Something Real with OpenServ** | $4,500 | ✅ `executeOpenServClaimWorkflow()` in `src/core/openserv.ts` — full 6-step claim workflow with x402 payments |
-| **Let the Agent Cook (PL)** | $4,000 | ✅ ERC-8004 + autonomous agent + agent.json + multi-tool orchestration |
-| **Agents With Receipts (PL)** | $4,000 | ✅ ERC-8004 configured + agent.json + agent_log.json |
-| **Best Use of Locus** | $3,000 | ✅ Locus guardrails in `src/core/locus.ts` |
-| **Lido MCP** | $5,000 | ✅ stake/unstake/wrap/unwrap + dry_run + governance vote in `src/mcp/lido/server.ts` |
-| **stETH Agent Treasury** | $3,000 | ✅ Full implementation + forge tests — principal inaccessible, yield spendable |
-| **Vault Position Monitor** | $1,500 | ✅ MCP server with yield alerts (Telegram/email) in `src/mcp/vault-monitor/server.ts` |
-| **ERC-8183 Open Build** | $2,000 | ✅ Full implementation deployed on Base Sepolia |
-| **Best Use of Agentic Storage** | $2,000 | ✅ Filecoin in `src/core/filecoin.ts` |
-| **Status Network ($50 min)** | $2,000 pool | ✅ Deployed at `0x3f4D1B...` — gasless tx `0x9a96...` (gas price = 0) |
-| **ENS Identity** | $600 | ✅ ENS resolution in `src/core/ens.ts` |
-| **ENS Communication** | $600 | ❌ Identity only — no ENS-based messaging |
-| **Escrow Ecosystem Extensions** | $450 | ✅ Arkhai in `src/core/arkhai.ts` |
-| **Student Founder's Bet** | $2,500 | ✅ Student project |
-| **Mechanism Design (Octant)** | $1,000 | ✅ Doc in `docs/octant-mechanism-design.md` |
+| Tool | What it does |
+|------|-------------|
+| `submit_claim` | File emergency claim with IPFS evidence |
+| `evaluate_claim` | Recommend approve/reject after evidence review |
+| `vouch_for_member` | Sponsor a new member |
+| `open_contribution_stream` | Open Superfluid USDCx stream |
+| `sync_member_streams` | Sync all member stream statuses |
+| `resolve_ens` | Resolve ENS name ↔ address |
+| `resolve_ens_contact` | Get email/github/twitter from ENS text records |
+| `send_x402_payment` | Pay another agent for work |
+| `swap_usdc` | Swap USDC for any token via Uniswap V3 |
+| `quote_swap` | Get Uniswap V3 swap quote |
+| `register_erc8004` | Register agent identity on ERC-8004 |
+| `register_status_agent` | Register on Status Network (gasless) |
+| `lido_stake` | Stake ETH → stETH |
+| `lido_wrap` | Wrap stETH → wstETH |
+| `vault_position` | Monitor Lido Earn vault positions |
+| `vault_alert` | Set yield floor alert |
 
 ## Architecture
 
 ```
 src/
 ├── core/
-│   ├── pool.ts          # MutualAidPool — Safe + ERC-8183 + stream sync
-│   ├── claims.ts        # Claim authorization + signature verification
+│   ├── pool.ts           # MutualAidPool — Safe + ERC-8183 + stream sync
+│   ├── claims.ts         # Claim authorization + signature verification
 │   ├── streaming.ts      # Superfluid USDCx stream management
-│   ├── x402.ts          # x402 HTTP payment protocol
-│   ├── ens.ts           # ENS name resolution + registration helper
-│   ├── erc8004.ts      # ERC-8004 identity registry
-│   ├── delegation.ts     # MetaMask Delegation Framework
-│   ├── locus.ts         # Locus payment guardrails
-│   ├── lido.ts          # Lido stETH staking + queries
-│   ├── filecoin.ts      # Filecoin Onchain Cloud for evidence
-│   ├── uniswap.ts       # Uniswap V3 token swaps + quoter
-│   ├── arkhai.ts       # Alkahest escrow protocol
-│   ├── openserv.ts      # OpenServ workflow + ERC-8004 integration
-│   ├── statusL2.ts      # Status L2 chain config
-│   └── config.ts        # Multi-chain config (CHAIN_NAME env var)
+│   ├── x402.ts           # x402 HTTP payment protocol
+│   ├── ens.ts            # ENS name + contact resolution
+│   ├── erc8004.ts        # ERC-8004 identity registry
+│   ├── delegation.ts      # MetaMask Delegation (ERC-7715)
+│   ├── locus.ts           # Locus payment guardrails
+│   ├── lido.ts            # Lido stETH staking + queries
+│   ├── filecoin.ts        # Filecoin Onchain Cloud for evidence
+│   ├── uniswap.ts         # Uniswap V3 token swaps
+│   ├── arkhai.ts          # Alkahest escrow protocol
+│   ├── openserv.ts        # OpenServ workflow + ERC-8004
+│   ├── statusL2.ts         # Status L2 chain config
+│   └── config.ts          # Multi-chain config
 ├── mcp/
 │   ├── lido/
-│   │   └── server.ts     # Lido MCP server (stake/unstake/wrap/governance)
+│   │   └── server.ts      # Lido MCP server (stake/unwrap/governance)
 │   └── vault-monitor/
-│       └── server.ts     # Vault Position Monitor MCP server
+│       └── server.ts      # Vault Monitor MCP server
 ├── contracts/
 │   ├── treasury/
-│   │   └── StETHTreasury.sol  # Agent treasury: yield only, no principal access
+│   │   └── StETHTreasury.sol  # Agent treasury: yield only, no principal
 │   └── status/
-│       └── StatusAgent.sol     # Minimal agent registry for Status Network bounty
+│       └── StatusAgent.sol    # Agent registry for Status Network
 ├── cli/
-│   ├── index.ts         # Commander CLI
+│   ├── index.ts           # Commander CLI
 │   └── commands/
-│       ├── pool.ts      # pool create/status/sync/stream-open
-│       └── claim.ts     # claim submit/list/approve/reject
+│       ├── pool.ts       # pool create/status/sync/stream-open
+│       └── claim.ts      # claim submit/list/approve/reject
 ├── deploy/
 │   ├── deploy-erc8183.ts  # Deploy ERC-8183 via forge
-│   ├── deploy-status.ts    # Deploy to Status Network Sepolia (Chain ID 1660990954)
-│   ├── gasless-tx.ts      # Execute gasless tx (gas=0) on Status Network
-│   └── create-safe.ts    # Deploy Safe multisig
-├── demo/
-│   └── run-demo.ts      # Full flow demo
+│   ├── deploy-status.ts    # Deploy to Status Network Sepolia
+│   ├── gasless-tx.ts      # Execute gasless tx on Status Network
+│   └── create-safe.ts     # Deploy Safe multisig
 ├── agent/
-│   └── agent.json       # DevSpot agent manifest
-├── docs/
-│   └── octant-mechanism-design.md  # Mechanism design for Octant track
-└── skills/
-    ├── SKILL.md         # Agent-facing SDK docs
-    └── lido.skill.md   # Lido MCP server skill for agents
+│   └── agent.json         # DevSpot agent manifest
+└── docs/
+    └── octant-mechanism-design.md
 ```
 
 ## Testing
@@ -189,9 +162,8 @@ src/
 ```bash
 npm run test          # 31 vitest unit tests
 forge test           # 26 Solidity forge tests
-npm run lint          # TypeScript type check
+npm run lint         # TypeScript type check
 npm run build         # Compile TypeScript
-npx tsc -p tsconfig.mcp.json  # Build MCP servers
 ```
 
 ## Key Design Decisions
@@ -201,14 +173,38 @@ npx tsc -p tsconfig.mcp.json  # Build MCP servers
 3. **Humans always in control** — agents can recommend but humans sign (or explicitly delegate)
 4. **x402 pays for work** — tiny micro-payments to agents for evaluation
 5. **ERC-8004 for identity** — portable reputation that follows agents across chains
-6. **ENS for pools** — discoverable names instead of hex addresses
+6. **ENS for pools** — discoverable names + contact info instead of hex addresses
 7. **Yield for agent budgets** — stETH treasury gives agents operating budget from yield only
+8. **Gasless L2 option** — Status Network lets agents register and transact for free (gas = 0)
 
-## Security
+## How to Use This Pool
 
-- Multisig threshold required for all fund movements
-- Signature freshness (7-day max age on claim signatures)
-- Nonce-resilient transaction submission
-- Spending guardrails via Locus
-- Delegation scope limits via MetaMask Delegation Framework
-- Principal structurally inaccessible in StETHTreasury (agent can only spend yield)
+**For a community organizer:**
+```bash
+# Deploy your pool on any supported chain
+export CHAIN_NAME=base-sepolia
+export DEPLOYER_PRIVATE_KEY=0x...
+npx tsx src/cli/index.ts pool create --name "My Community" --threshold 2 --members 0xAlice,0xBob
+
+# Share the Safe address with members
+# Members open Superfluid USDCx streams to contribute monthly
+```
+
+**For an AI agent (DevSpot, OpenCode, etc.):**
+- Read `agent/agent.json` to understand what this pool can do
+- The agent connects via MetaMask Delegation — humans grant signing authority
+- Agents evaluate claims by reading evidence from IPFS/Filecoin
+- Agents get paid via x402 micro-payments
+
+**For a developer building on this:**
+```bash
+# Extend with new chain
+# 1. Add chain config to src/core/config.ts
+# 2. Deploy ERC-8183: npx tsx src/deploy/deploy-erc8183.ts
+# 3. Add to agent/agent.json tools
+
+# Add new MCP server
+# 1. Create src/mcp/your-service/server.ts
+# 2. Implement tools as plain functions
+# 3. Document in agent/agent.json
+```
