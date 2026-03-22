@@ -9,7 +9,7 @@
     "chainId": 84532,
     "erc8183": "0x76Dd9C55D9a2e4B36219b4cC749deEF8324333e6",
     "safe": null,
-    "rpc": "https://sepolia.base.org",
+    "rpc": "https://base-sepolia-rpc.publicnode.com",
     "uniswap": {
       "quoter": "0xC5290058841028F1614F3A6F0F5816cAd0df5E27",
       "router": "0x94cC0AaC535CCDB3C01d6787D6413C739ae12bc4",
@@ -17,15 +17,15 @@
       "swapTx": "0x6bcc8a14256a60be604950a9a68fe4aea73199a30c386ef3b38cae6ea1d6e430"
     },
     "lastDemoJob": {
-      "jobId": "2",
+      "jobId": "3",
       "amount": 5,
       "txs": {
-        "createJob": "0x6f6318257ccd023871afb269f1e6fc513961b32dd6f1c08fb749cb7952f328ff",
-        "setBudget": "0x5942e6968dc5bf9cb9bc67edec8f4e6f04dac07a7a820ff4ecbbbeb8035cbf1f",
-        "approve": "0xed6c307bb841b54bf516ed1439e8c25d09990eba76bf2b4179fbea0b6d21ba04",
-        "fund": "0x09ae5717c665fa994efee1733899746df8fe5a7dacda6159ccea074cfc301679",
-        "submit": "0xf21e8a95cf4f9af58251ae77db1c9095002e93f7c93b372f1dda13103e637e20",
-        "complete": "0xe73de02838d6257e2c5002df306ed461fc683564afcaa88aeb0bdd3d65347266"
+        "createJob": "0x59899af9e12e0fea88698c0386d0f2c65472bd5417dd44c14fae1fb76b955773",
+        "setBudget": "0x690395493729b361ab7f59c296fa05d80fe2a8ef0f467872aecae0e833678956",
+        "approve": "0x7a3271f30290174aa42ceb16e21b58896b065fce8a4dda0a9c29a05a840cca7f",
+        "fund": "0xc918ad8348ff48d6bf50e1ec90c24fd7a9bfab49e037f1981729829a58f942c0",
+        "submit": "0xf55e18ba40e0371ddc89d179ec9d8dfa0dcd45e0d6a7685c2676d80ebbec9e11",
+        "complete": "0x9c2d963a0c4719cb9068fbf1b84a8c522179a253f2c1a03f04bc76ac097a3888"
       }
     }
   },

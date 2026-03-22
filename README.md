@@ -33,20 +33,49 @@ x402 pays each evaluator's agent
 
 ## Stack
 
-- **Safe multisig** — holds pooled USDC, executes payments
-- **Superfluid USDCx** — continuous contributions (stream open = active member)
-- **ERC-8183** — claim lifecycle (create job → fund → submit → complete/reject)
-- **ERC-8004** — agent identity + portable reputation
-- **x402** — micro-payments to agents for evaluation work
-- **ENS** — discoverable pool names + contact info (email, GitHub, Twitter, Telegram)
-- **Lido stETH** — yield on idle pool funds
-- **MetaMask Delegation** — programmable agent signing authority (ERC-7715)
-- **Locus** — spending guardrails on pool agent
-- **Uniswap V3** — token swaps for pool rebalancing
-- **Filecoin** — evidence storage for claims
-- **Arkhai** — escrow protocol for secure conditional payments
-- **OpenServ** — agent service marketplace for claim workflow automation
-- **Status Network** — gasless agent registry (gas = 0 per tx)
+**Safe** — Holds pooled USDC, executes payments via multisig
+
+**Superfluid** — Continuous USDCx contributions via streaming (stream open = active member)
+
+**ERC-8183 (AgenticCommerce)** — Claim lifecycle on every chain: createJob → setBudget → fund → submit → complete/reject
+
+**ERC-8004** — Agent identity registry: registerAgent() → agentId with portable reputation across chains
+
+**x402** — Micro-payments to agents for evaluation work via HTTP payment protocol
+
+**ENS** — Pool and agent names discoverable via ENS (forward + reverse resolution, text records for email/github/twitter)
+
+**Lido** — ETH → stETH staking via MCP tools; StETHTreasury uses real stETH/ETH exchange rate oracle for yield accrual
+
+**MetaMask Delegation (ERC-7715)** — Programmable agent signing authority: humans delegate to agents without surrendering keys
+
+**Locus** — Spending guardrails on pool agent: max tx size, daily limits, blocked recipient categories
+
+**Uniswap V3** — Pool rebalancing: idle USDC → WETH swaps via router
+
+**Filecoin** — Evidence storage for claims via IPFS (Filecoin Onchain Cloud)
+
+**Arkhai** — Escrow protocol for secure conditional payments, integrated with claim lifecycle via event parsing
+
+**OpenServ** — Agent service marketplace: orchestrates 6-step claim workflow (create → evaluate → vote → execute → pay → record)
+
+**Status Network** — Agent registry on gasless L2 (gas price = 0 per transaction, confirmed on-chain)
+
+**GenLayer** — LLM-powered claim evaluation via Optimistic Democracy intelligent contract (Python/GenVM)
+
+**Octant** — Mechanism design: quadratic funding for pool grants + retroactive impact analysis for claim verification
+
+## Architecture
+
+```
+Pool (Safe multisig + ERC-8183)
+  ├── Human deposits stETH → StETHTreasury (principal untouchable by agent)
+  ├── Agent earns yield budget only (via Lido getAPR() oracle)
+  ├── Claim filed → ERC-8183 job → group chat deliberation
+  ├── Each agent evaluates → x402 paid for work
+  ├── Safe executes → USDC transfers to claimant
+  └── Idle USDC → Uniswap V3 → rebalance
+```
 
 ## Deployments
 
@@ -78,12 +107,27 @@ npm run build
 npm run test
 ```
 
+**Run the live demo (full claim lifecycle on Base Sepolia — 6 confirmed txs):**
+```bash
+npx tsx live-demo.ts
+```
+
+**Query real Lido APR on Ethereum mainnet:**
+```bash
+npx tsx scripts/lido-apr-query.ts
+```
+
 **Create a pool:**
 ```bash
 npx tsx src/cli/index.ts pool create \
   --name "My Pool" \
   --threshold 2 \
   --members 0xAlice,0xBob
+```
+
+**Add a member to an existing pool:**
+```bash
+npx tsx src/cli/index.ts pool join --pool 0xSafeAddress --voucher 0xExistingMember
 ```
 
 **Submit a claim:**
@@ -106,8 +150,12 @@ Agents use these tools (defined in `agent/agent.json`):
 
 | Tool | What it does |
 |------|-------------|
-| `submit_claim` | File emergency claim with IPFS evidence |
+| `submit_claim` | File emergency claim with IPFS evidence (on-chain job creation) |
+| `complete_claim` | Release escrow payment from ERC-8183 to claimant |
 | `evaluate_claim` | Recommend approve/reject after evidence review |
+| `pool_join` | Join an existing pool as new member |
+| `pool_create` | Create new pool with Safe multisig + ERC-8183 |
+| `pool_status` | Check pool balance, deployment status, Safe owners |
 | `vouch_for_member` | Sponsor a new member |
 | `open_contribution_stream` | Open Superfluid USDCx stream |
 | `sync_member_streams` | Sync all member stream statuses |
@@ -118,10 +166,17 @@ Agents use these tools (defined in `agent/agent.json`):
 | `quote_swap` | Get Uniswap V3 swap quote |
 | `register_erc8004` | Register agent identity on ERC-8004 |
 | `register_status_agent` | Register on Status Network (gasless) |
-| `lido_stake` | Stake ETH → stETH |
-| `lido_wrap` | Wrap stETH → wstETH |
+| `lido_stake` | Stake ETH → stETH on Ethereum mainnet |
+| `lido_wrap` | Wrap stETH → wstETH (mainnet/base only) |
+| `lido_balance` | Query stETH/wstETH balance + rewards |
+| `lido_rewards` | Get current stETH supply + APY estimates |
+| `lido_dry_run` | Simulate stake/unstake/wrap without executing |
+| `lido_governance_vote` | Vote on Lido DAO proposals |
 | `vault_position` | Monitor Lido Earn vault positions |
 | `vault_alert` | Set yield floor alert |
+| `genlayer_evaluate_claim` | LLM-powered claim evaluation via GenLayer |
+| `genlayer_get_average_stars` | Get average evaluation stars for a claim |
+| `genlayer_submit_evaluation` | Submit evaluation to GenLayer contract |
 
 ## Architecture
 

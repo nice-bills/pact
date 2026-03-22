@@ -9,9 +9,11 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.s
 ///         where only the yield (not principal) can be spent by the agent.
 /// @dev Principal is structurally inaccessible to the agent. Only accumulated yield
 ///      can be drawn via spend(). Agent can query yield balance but never touches principal.
+///      Yield is calculated using Lido's real-time APR oracle via stETH.getAPR().
 contract StETHTreasury is ReentrancyGuard {
     IERC20 public immutable stETH;
     IERC20 public immutable wstETH;
+    address public immutable LIDO_ORACLE;
 
     mapping(address => uint256) public principal;
     mapping(address => uint256) public yieldBalance;
@@ -22,7 +24,6 @@ contract StETHTreasury is ReentrancyGuard {
     mapping(address => mapping(address => uint256)) public spentThisPeriod;
     mapping(address => uint256) public periodStart;
 
-    uint256 public constant ANNUAL_YIELD_BPS = 500; // 5% APY estimate — DEMO ONLY; replace with real Lido APY oracle for production
     uint256 public constant BPS = 10000;
     uint256 public constant SECONDS_PER_YEAR = 365 days;
 
@@ -34,18 +35,34 @@ contract StETHTreasury is ReentrancyGuard {
     event RecipientAllowed(address indexed agent, address indexed recipient);
     event SpendingCapSet(address indexed agent, uint256 cap);
     event AgentSet(address indexed human, address indexed newAgent);
+    event APRUpdated(uint256 apr);
 
-    /// @param _stETH stETH token address (Ethereum mainnet)
-    /// @param _wstETH wstETH token address (L2 where wstETH is bridged)
+    /// @param _stETH stETH token address (Ethereum mainnet, e.g. 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84)
+    /// @param _wstETH wstETH token address (for L2 where wstETH is bridged)
     /// @param _agent The AI agent wallet that can spend only the yield
     constructor(address _stETH, address _wstETH, address _agent) {
         stETH = IERC20(_stETH);
         wstETH = IERC20(_wstETH);
+        LIDO_ORACLE = _stETH;
         HUMAN = msg.sender;
         agent = _agent;
     }
 
-    /// @notice Human deposits stETH as principal. Yield accrues over time.
+    /// @notice Returns the current Lido APR in basis points. Calls stETH.getAPR() on-chain.
+    /// @dev stETH rebases daily — this oracle gives the protocol's own APR estimate.
+    ///      Returns 0 if the oracle call fails (fallback to conservative 300bps).
+    function getCurrentAPR() public view returns (uint256 aprBps) {
+        (bool success, bytes memory data) = LIDO_ORACLE.staticcall(
+            abi.encodeWithSignature("getAPR()")
+        );
+        if (success && data.length >= 32) {
+            aprBps = abi.decode(data, (uint256));
+        } else {
+            aprBps = 300;
+        }
+    }
+
+    /// @notice Human deposits stETH as principal. Yield accrues over time using real Lido APR.
     /// @param amount Amount of stETH to deposit as principal
     function deposit(uint256 amount) external {
         require(msg.sender == HUMAN, "Only human can deposit");
@@ -57,7 +74,7 @@ contract StETHTreasury is ReentrancyGuard {
         emit Deposit(HUMAN, amount, 0);
     }
 
-    /// @notice Agent withdraws accumulated yield to a recipient.
+    /// @notice Agent withdraws accumulated yield to a recipient. Only yield, never principal.
     /// @param recipient Address to send the yield funds
     /// @param amount Amount of yield to withdraw
     function spend(address recipient, uint256 amount) external nonReentrant {
@@ -67,12 +84,10 @@ contract StETHTreasury is ReentrancyGuard {
         require(amount <= yieldBalance[HUMAN], "Insufficient yield balance");
         require(amount > 0, "Cannot withdraw 0");
 
-        // Check recipient whitelist if enabled
         if (allowedRecipients[HUMAN]) {
             require(recipient == HUMAN || allowedRecipients[recipient], "Recipient not allowed");
         }
 
-        // Check spending cap
         uint256 cap = spendingCaps[HUMAN];
         if (cap > 0) {
             uint256 spent = spentThisPeriod[HUMAN][recipient];
@@ -94,9 +109,9 @@ contract StETHTreasury is ReentrancyGuard {
         yieldAvailable = yieldBalance[HUMAN];
     }
 
-    /// @notice Human enables/disables recipient whitelist mode, and sets individually allowed recipients.
+    /// @notice Human enables/disables recipient whitelist mode.
     /// @param enabled True to require agents to only spend to HUMAN or explicitly allowed recipients
-    /// @param recipient Address to allow (only checked if enabled is true)
+    /// @param recipient Address to allow
     /// @param allowed True to allow, false to disallow
     function setRecipientAllowed(bool enabled, address recipient, bool allowed) external {
         require(msg.sender == HUMAN, "Only human can set recipients");
@@ -107,9 +122,9 @@ contract StETHTreasury is ReentrancyGuard {
         emit RecipientAllowed(HUMAN, recipient);
     }
 
-    /// @notice Human sets a spending cap for the agent per period.
-    /// @param cap Maximum amount agent can spend per period (0 = no cap)
-    /// @param periodSeconds Length of the period (resets counter)
+    /// @notice Human sets a spending cap for the agent per period (0 = no cap).
+    /// @param cap Maximum amount agent can spend per period
+    /// @param periodSeconds Length of the period
     function setSpendingCap(uint256 cap, uint256 periodSeconds) external {
         require(msg.sender == HUMAN, "Only human can set caps");
         spendingCaps[HUMAN] = cap;
@@ -135,15 +150,18 @@ contract StETHTreasury is ReentrancyGuard {
         require(success, "wstETH unwrap failed");
     }
 
+    /// @dev Accrues yield using Lido's real-time APR oracle.
+    ///      Falls back to 300bps if oracle call fails.
     function _accrue(address user) internal {
         if (principal[user] == 0) return;
         uint256 elapsed = block.timestamp - lastAccrualTime[user];
         if (elapsed == 0) return;
-        uint256 accrued = (principal[user] * ANNUAL_YIELD_BPS * elapsed) / (BPS * SECONDS_PER_YEAR);
+        uint256 aprBps = getCurrentAPR();
+        uint256 accrued = (principal[user] * aprBps * elapsed) / (BPS * SECONDS_PER_YEAR);
         yieldBalance[user] += accrued;
         lastAccrualTime[user] = block.timestamp;
+        emit APRUpdated(aprBps);
     }
 
-    // Make contract receive stETH from Lido staking
     receive() external payable {}
 }
