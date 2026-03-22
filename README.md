@@ -48,7 +48,19 @@ x402 pays each evaluator's agent
 - **OpenServ** — agent service marketplace for claim workflow automation
 - **Status Network** — gasless agent registry (gas = 0 per tx)
 
-## Chain Configuration
+## Deployments
+
+| Chain | Contract | Address | TX Hash |
+|-------|----------|---------|---------|
+| **Avalanche Fuji** | ERC-8183 | `0x77107B62a9149F0073F40846af477fa6f9E3543A` | `0x` (forge deploy) |
+| **Celo Sepolia** | ERC-8183 | `0x77107B62a9149F0073F40846af477fa6f9E3543A` | [`0xf67c32d1d1ed13d4373edc6c9b7f808226a69cb2233c8f386bb412be78b939ab`](https://explorer.celo-sepolia.org/tx/0xf67c32d1d1ed13d4373edc6c9b7f808226a69cb2233c8f386bb412be78b939ab) |
+| **Base Sepolia** | ERC-8183 | `0x76Dd9C55D9a2e4B36219b4cC749deEF8324333e6` | [`0xfc7d29925b4242d9d787ca6dd2e7d82dc28aaa27464ade8d3b3f702547d7e1ad`](https://base-sepolia.blockscout.com/tx/0xfc7d29925b4242d9d787ca6dd2e7d82dc28aaa27464ade8d3b3f702547d7e1ad) |
+| **Base Sepolia** | Uniswap swap (1 USDC→WETH) | — | [`0x6bcc8a14256a60be604950a9a68fe4aea73199a30c386ef3b38cae6ea1d6e430`](https://base-sepolia.blockscout.com/tx/0x6bcc8a14256a60be604950a9a68fe4aea73199a30c386ef3b38cae6ea1d6e430) |
+| **Status Network Sepolia** | StatusAgent | `0x3f4D1B21251409075a0FB8E1b0C0A30B23f05653` | [`0xd0ba070c8bebaf061045f1220fae9357e41c7470d71d4fb609a7e1d873e5bf1b`](https://sepoliascan.status.network/tx/0xd0ba070c8bebaf061045f1220fae9357e41c7470d71d4fb609a7e1d873e5bf1b) |
+| **Status Network Sepolia** | Gasless `register()` (gas=0) | — | [`0x9a963bf3aa4d81962d0f6f7350c7b460277e20e6a1edebc5e62a3d3651f78574`](https://sepoliascan.status.network/tx/0x9a963bf3aa4d81962d0f6f7350c7b460277e20e6a1edebc5e62a3d3651f78574) |
+| **GenLayer Bradbury** | ClaimEvaluator | `0xd94B673433b434B63540e0084246Eff8085be110` | [`0xef96a18d851a57b995b0bd466e07107ad30e182cf10b83c3c20630e0fd3efd89`](https://explorer-bradbury.genlayer.com/tx/0xef96a18d851a57b995b0bd466e07107ad30e182cf10b83c3c20630e0fd3efd89) |
+
+### Chain Config
 
 ```bash
 export CHAIN_NAME=avalanche-fuji   # ERC-8183: 0x77107B62a9149F0073F40846af477fa6f9E3543A

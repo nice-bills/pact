@@ -43,8 +43,9 @@
     "chainId": 61999,
     "network": "testnet-bradbury",
     "rpc": "https://studio.genlayer.com/api",
-    "claimEvaluator": "PENDING_DEPLOYMENT",
+    "claimEvaluator": "0xd94B673433b434B63540e0084246Eff8085be110",
     "contract": "contracts/genlayer/claim_evaluator.py",
-    "description": "GenLayer intelligent contract — LLM-powered claim evaluation via Optimistic Democracy consensus"
+    "description": "GenLayer intelligent contract \u2014 LLM-powered claim evaluation via Optimistic Democracy consensus",
+    "deployTx": "0xef96a18d851a57b995b0bd466e07107ad30e182cf10b83c3c20630e0fd3efd89"
   }
 }
