@@ -13,3 +13,11 @@ test-results/
 out/
 genlayer/__pycache__/
 check-job.ts
+
+# Video editing intermediates
+video-edit/*.mp4
+video-edit/*.webm
+video-edit/*.cjs
+video-edit/*.sh
+slides/*-preview.pptx
+slides/*-ext/
