@@ -12,15 +12,11 @@ const DEPLOYED_CONTRACTS = {
   "base-sepolia": {
     erc8183: "0x76Dd9C55D9a2e4B36219b4cC749deEF8324333e6",
     safe: process.env.POOL_SAFE_ADDRESS ?? "0xc6c0D80d00d3aCA069386245F4b3Ff1f3c1E9b4F",
-    uniswapRouter: "0x94cC0AaC535CCDB3C01d6787D6413C739ae12bc4",
-    usdc: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
     explorer: "https://sepolia.basescan.org",
   },
   "avalanche-fuji": {
     erc8183: "0x77107B62a9149F0073F40846af477fa6f9E3543A",
     safe: process.env.POOL_SAFE_ADDRESS ?? "0xc6c0D80d00d3aCA069386245F4b3Ff1f3c1E9b4F",
-    uniswapRouter: "0x94cC0AaC535CCDB3C01d6787D6413C739ae12bc4",
-    usdc: "0x5425890298aed601595a70AB815c96711a31Bc65",
     explorer: "https://testnet.snowtrace.io",
   },
 };
@@ -48,7 +44,6 @@ async function main() {
   console.log(`\n1. Pool initialized`);
   console.log(`   Safe:      ${contracts.safe}`);
   console.log(`   ERC-8183:  ${contracts.erc8183}`);
-  console.log(`   USDC:      ${contracts.usdc}`);
 
   // Check pool balance
   let poolBalance = 0n;
@@ -59,57 +54,38 @@ async function main() {
     console.log(`\n2. Pool balance: (could not read — check RPC)`);
   }
 
-  // Show live transactions as evidence
-  console.log(`\n3. Previously verified on-chain:`);
+  // Show verified on-chain transactions
+  console.log(`\n3. Verified on-chain transactions:`);
   if (chainKey === "base-sepolia") {
     console.log(`   Uniswap swap: ${contracts.explorer}/tx/0x6bcc8a14256a60be604950a9a68fe4aea73199a30c386ef3b38cae6ea1d6e430`);
-    console.log(`   (1 USDC → WETH, pool 0x46880b404cd35c165eddeff7421019f8dd25f4ad)`);
+    console.log(`   (1 USDC → WETH)`);
+    console.log(`   Claim created: ${contracts.explorer}/tx/0xfc7d29925b4242d9d787ca6dd2e7d82dc28aaa27464ade8d3b3f702547d7e1ad`);
+    console.log(`   (Job #1 created on ERC-8183)`);
   }
 
-  // Demo claim if pool is funded
-  const maria = "0x4444444444444444444444444444444444444444" as `0x${string}`;
-  const mariaClaim = {
-    claimantAddress: maria,
-    amountUsd: 80,
-    evidenceIpfsHash: "QmXoypizjW3WknFiJnKLwHCnL72vedxjQkDDP1mXWo6uco",
-    description: "Hospital bill for son's medication",
-  };
-
-  console.log(`\n4. Claim submission (Maria):`);
-  console.log(`   Amount:   $${mariaClaim.amountUsd}`);
-  console.log(`   Evidence: ${mariaClaim.evidenceIpfsHash}`);
-  console.log(`   Desc:     ${mariaClaim.description}`);
-
-  if (poolBalance === 0n) {
-    console.log(`\n   ⚠️  Pool has 0 USDC — cannot create claim`);
-    console.log(`   Send USDC to: ${contracts.safe}`);
-    console.log(`   Then run: npm run demo:fresh`);
-  } else {
-    console.log(`\n5. Creating on-chain job via ERC-8183...`);
-    try {
-      const result = await pool.createClaim(mariaClaim);
-      console.log(`   Job #${result.jobId} created`);
-      console.log(`   createJob:  ${result.txs.createJob}`);
-      console.log(`   fundJob:    ${result.txs.fundJob}`);
-
-      console.log(`\n6. Committee approval (2-of-3 threshold):`);
-      console.log(`   Alice: APPROVE`);
-      console.log(`   Bob:   APPROVE`);
-
-      const completeTx = await pool.completeClaim(result.jobId, "Committee unanimous");
-      console.log(`   COMPLETED: ${completeTx}`);
-      console.log(`   ${contracts.explorer}/tx/${completeTx}`);
-    } catch (error) {
-      console.log(`   Failed: ${error}`);
-    }
+  // Read existing job #1
+  console.log(`\n4. Reading existing claim from chain...`);
+  try {
+    const job = await pool.getJob(1n);
+    console.log(`   Job #1:`);
+    console.log(`     Status: ${job.status}`);
+    console.log(`     Claimant: ${job.claimantAddress}`);
+    const desc = Buffer.from(job.description.slice(2), "hex").toString("utf8");
+    console.log(`     Description: ${desc}`);
+  } catch (e) {
+    console.log(`   Could not read job: ${e}`);
   }
 
   // Show all deployed contracts
   console.log(`\n=== All Deployed Contracts ===`);
   console.log(`Avalanche Fuji:  0x77107B62a9149F0073F40846af477fa6f9E3543A`);
-  console.log(`Celo Sepolia:    0x77107B62a9149F0073F40846af477fa6f9E3543A (${contracts.explorer}/address/0x77107B62a9149F0073F40846af477fa6f9E3543A)`);
-  console.log(`Base Sepolia:    ${contracts.erc8183} (${contracts.explorer}/address/${contracts.erc8183})`);
-  console.log(`Status Sepolia:  0x3f4D1B21251409075a0FB8E1b0C0A30B23f05653 (https://sepoliascan.status.network/address/0x3f4D1B21251409075a0FB8E1b0C0A30B23f05653)`);
+  console.log(`Celo Sepolia:    0x77107B62a9149F0073F40846af477fa6f9E3543A`);
+  console.log(`Base Sepolia:    ${contracts.erc8183}`);
+  console.log(`Status Sepolia:  0x3f4D1B21251409075a0FB8E1b0C0A30B23f05653`);
+
+  console.log(`\n=== Run the full CLI demo ===`);
+  console.log(`npm run cli:pool -- status --pool ${contracts.safe}`);
+  console.log(`npm run cli:claim -- submit --pool ${contracts.safe} --amount 10 --evidence QmXyz... --description "Emergency"`);
 }
 
 main().catch(console.error);

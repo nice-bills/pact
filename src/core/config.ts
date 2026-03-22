@@ -101,7 +101,7 @@ const CHAIN_CONFIGS = {
   "base-sepolia": {
     chain: baseSepolia,
     id: baseSepolia.id,
-    rpc: process.env.BASE_SEPOLIA_RPC ?? "https://sepolia.base.org",
+    rpc: process.env.BASE_SEPOLIA_RPC ?? "https://base-sepolia-rpc.publicnode.com",
     usdc: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
     explorer: "https://sepolia.basescan.org",
     x402Enabled: true,
