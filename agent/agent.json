@@ -12,18 +12,38 @@
   "supportedTools": [
     {
       "name": "submit_claim",
-      "description": "Submit an emergency claim to the mutual aid pool with evidence IPFS hash",
+      "description": "Submit an emergency claim to the mutual aid pool with evidence IPFS hash. Creates Job on ERC-8183, sets budget, and funds from claimant wallet",
       "params": ["amountUsd", "description", "evidenceIpfsHash"]
     },
     {
+      "name": "complete_claim",
+      "description": "Complete a funded claim by calling complete() on the ERC-8183 contract. Releases USDC from escrow to the provider. Requires evaluator address to match caller",
+      "params": ["jobId", "reason"]
+    },
+    {
       "name": "evaluate_claim",
-      "description": "Evaluate a claim and recommend approve/reject based on evidence review",
+      "description": "Evaluate a claim and recommend approve/reject based on evidence review. After group chat deliberation, the evaluator calls complete() on ERC-8183 to release payment — no Safe multisig required",
       "params": ["claimantAddress", "amountUsd", "description", "evidenceIpfsHash"]
     },
     {
       "name": "vouch_for_member",
       "description": "Vouch for a new member to join the mutual aid pool",
       "params": ["voucheeAddress"]
+    },
+    {
+      "name": "pool_join",
+      "description": "Join an existing mutual aid pool as a new member. Records membership in config/members.json and proposes Safe addOwnerWithThreshold tx on chains with deployed Safe factory",
+      "params": ["poolAddress", "voucherAddress"]
+    },
+    {
+      "name": "pool_create",
+      "description": "Create a new mutual aid pool with a Safe multisig and ERC-8183 agent contract. Sets up threshold and founding members",
+      "params": ["name", "threshold", "memberAddresses"]
+    },
+    {
+      "name": "pool_status",
+      "description": "Check pool status: balance, members, Safe deployment, ERC-8183 deployment",
+      "params": ["poolAddress"]
     },
     {
       "name": "open_contribution_stream",

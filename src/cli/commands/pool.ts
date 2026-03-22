@@ -101,9 +101,45 @@ export async function poolJoin(opts: {
   voucher: `0x${string}`;
 }): Promise<void> {
   const config = getPoolConfig(opts.pool);
-  const pool = new MutualAidPool(config, getDeployerKey());
-  pool.vouchForMember(opts.voucher, opts.voucher);
-  console.log(`Voucher ${opts.voucher} recorded for pool ${opts.pool}`);
+  const privateKey = getDeployerKey();
+  const account = privateKeyToAccount(privateKey);
+  const newMember = account.address as `0x${string}`;
+  const voucher = opts.voucher as `0x${string}`;
+  const pool = new MutualAidPool(config, privateKey);
+
+  const fs = await import("fs");
+  const path = await import("path");
+  const membersPath = path.join(process.cwd(), "config", "members.json");
+
+  let members: Record<string, Record<string, { address: string; vouchedBy: string; joinedAt: number; chain: string }>> = {};
+  if (fs.existsSync(membersPath)) {
+    members = JSON.parse(fs.readFileSync(membersPath, "utf-8"));
+  }
+
+  const poolKey = `${opts.pool.toLowerCase()}-${CHAIN_ID}`;
+  if (!members[poolKey]) {
+    members[poolKey] = {};
+  }
+  members[poolKey][newMember.toLowerCase()] = {
+    address: newMember,
+    vouchedBy: voucher,
+    joinedAt: Date.now(),
+    chain: CHAIN.name,
+  };
+
+  fs.writeFileSync(membersPath, JSON.stringify(members, null, 2));
+
+  pool.vouchForMember(voucher, newMember);
+
+  console.log(`\nMember ${newMember} joined pool ${opts.pool}`);
+  console.log(`Vouched by: ${voucher}`);
+  console.log(`Recorded in config/members.json`);
+
+  console.log(`\nOn mainnet (with deployed Safe factory), this would also:`);
+  console.log(`  1. Propose Safe addOwnerWithThreshold transaction`);
+  console.log(`  2. Existing owners sign via Safe wallet UI`);
+  console.log(`  3. New owner added on-chain after threshold`);
+  console.log(`\nSafe testnets use counterfactual — not deployed until first tx.`);
 }
 
 export async function poolStatus(opts: { pool: `0x${string}`; ensName?: string }): Promise<void> {
