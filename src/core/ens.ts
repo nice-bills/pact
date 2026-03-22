@@ -7,7 +7,7 @@ const ENS_REGISTRY_ADDRESSES: Record<number, `0x${string}`> = {
 };
 
 const PUBLIC_RESOLVER_ADDRESSES: Record<number, `0x${string}`> = {
-  1: "0x231b0Ee13948F9f10418cFF2C2D8aF5CeFcB3e8f",
+  1: "0x231b0Ee13948F9f10418cFF2C2C8aF5CeFcB3e8f",
   84532: "0x19a2b2CDD5F9E0CD3E1e9C85d8e9aD3B3F8B5f6a",
 };
 
@@ -56,6 +56,16 @@ const PUBLIC_RESOLVER_ABI = [
     ],
     outputs: [],
     stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "text",
+    inputs: [
+      { name: "node", type: "bytes32" },
+      { name: "key", type: "string" },
+    ],
+    outputs: [{ name: "value", type: "string" }],
+    stateMutability: "view",
   },
 ] as const;
 
@@ -145,6 +155,50 @@ export async function resolveAddressToEns(address: `0x${string}`): Promise<strin
     });
 
     return name as string;
+  } catch {
+    return null;
+  }
+}
+
+export interface EnsContactInfo {
+  email?: string | null;
+  url?: string | null;
+  github?: string | null;
+  twitter?: string | null;
+  telegram?: string | null;
+  description?: string | null;
+}
+
+export async function resolveEnsContact(name: string): Promise<EnsContactInfo | null> {
+  const registryAddress = ENS_REGISTRY_ADDRESSES[Number(CHAIN.id)];
+  if (!registryAddress) return null;
+
+  const publicClient = createPublicClient({ chain: CHAIN, transport: http(RPC_URL) });
+  const node = namehash(name);
+
+  try {
+    const resolverAddress = await publicClient.readContract({
+      address: registryAddress,
+      abi: ENS_ABI,
+      functionName: "resolver",
+      args: [node],
+    });
+
+    if (resolverAddress === "0x0000000000000000000000000000000000000000") {
+      return null;
+    }
+
+    const resolver = resolverAddress as `0x${string}`;
+    const [email, url, github, twitter, telegram, description] = await Promise.all([
+      publicClient.readContract({ address: resolver, abi: PUBLIC_RESOLVER_ABI, functionName: "text", args: [node, "email"] }),
+      publicClient.readContract({ address: resolver, abi: PUBLIC_RESOLVER_ABI, functionName: "text", args: [node, "url"] }),
+      publicClient.readContract({ address: resolver, abi: PUBLIC_RESOLVER_ABI, functionName: "text", args: [node, "com.github"] }),
+      publicClient.readContract({ address: resolver, abi: PUBLIC_RESOLVER_ABI, functionName: "text", args: [node, "com.twitter"] }),
+      publicClient.readContract({ address: resolver, abi: PUBLIC_RESOLVER_ABI, functionName: "text", args: [node, "org.telegram"] }),
+      publicClient.readContract({ address: resolver, abi: PUBLIC_RESOLVER_ABI, functionName: "text", args: [node, "description"] }),
+    ]);
+
+    return { email, url, github, twitter, telegram, description };
   } catch {
     return null;
   }

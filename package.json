@@ -20,7 +20,11 @@
     "deploy:all": "tsx src/deploy/deploy-all.ts",
     "deploy:status": "tsx src/deploy/deploy-status.ts",
     "deploy:gasless": "tsx src/deploy/gasless-tx.ts",
-    "wallet:check": "tsx src/deploy/check-wallet.ts"
+    "wallet:check": "tsx src/deploy/check-wallet.ts",
+    "mcp:lido": "tsx src/mcp/lido/server.ts",
+    "mcp:vault": "tsx src/mcp/vault-monitor/server.ts",
+    "cli:pool": "tsx src/cli/index.ts pool",
+    "cli:claim": "tsx src/cli/index.ts claim"
   },
   "engines": {
     "node": ">=20"

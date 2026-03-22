@@ -24,6 +24,28 @@ const celoAlfajores = defineChain({
   },
 });
 
+const celoSepolia = defineChain({
+  id: 11142220,
+  name: "Celo Sepolia",
+  network: "celo-sepolia",
+  nativeCurrency: {
+    decimals: 18,
+    name: "Celo",
+    symbol: "CELO",
+  },
+  rpcUrls: {
+    default: {
+      http: ["https://forno.celo-sepolia.celo-testnet.org"],
+    },
+  },
+  blockExplorers: {
+    default: {
+      name: "CeloScan",
+      url: "https://celo-sepolia.blockscout.com",
+    },
+  },
+});
+
 const avalancheFuji = defineChain({
   id: 43_113,
   name: "Avalanche Fuji",
@@ -55,6 +77,15 @@ const CHAIN_CONFIGS = {
     rpc: process.env.CELO_RPC ?? "https://alfajores-forno.celo-testnet.org",
     usdc: "0x62d5aCC5Ce82A0b1d9C5Aa65B5C1E3F15E6C80f",
     explorer: "https://alfajores.celoscan.io",
+    x402Enabled: true,
+    erc8004: "0x00000000000000000000000000000000008004" as const,
+  },
+  "celo-sepolia": {
+    chain: celoSepolia,
+    id: celoSepolia.id,
+    rpc: process.env.CELO_SEPOLIA_RPC ?? "https://forno.celo-sepolia.celo-testnet.org",
+    usdc: "0x01C5C0122039549AD1493B8220cABEdD739BC44E",
+    explorer: "https://celo-sepolia.blockscout.com",
     x402Enabled: true,
     erc8004: "0x00000000000000000000000000000000008004" as const,
   },
@@ -91,6 +122,7 @@ export const X402_ENABLED = CHAIN_CONFIG.x402Enabled;
 
 const SUPERFLUID_CONFIG = {
   "celo-alfajores": null,
+  "celo-sepolia": null,
   "avalanche-fuji": { host: "0x109412E3C84f0539b43d39dB691B08c90f58dC7c" as const, token: "0x2C4608e5E9bEcf46096Fc4E8A4524dAF0e59954b" as const },
   "base-sepolia": { host: "0x109412E3C84f0539b43d39dB691B08c90f58dC7c" as const, token: "0x2C4608e5E9bEcf46096Fc4E8A4524dAF0e59954b" as const },
 } as const;

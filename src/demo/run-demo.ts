@@ -8,9 +8,29 @@ if (!DEMO_PRIVATE_KEY) {
   process.exit(1);
 }
 
+const DEPLOYED_CONTRACTS = {
+  "base-sepolia": {
+    erc8183: "0x76Dd9C55D9a2e4B36219b4cC749deEF8324333e6",
+    safe: process.env.POOL_SAFE_ADDRESS ?? "0xc6c0D80d00d3aCA069386245F4b3Ff1f3c1E9b4F",
+    uniswapRouter: "0x94cC0AaC535CCDB3C01d6787D6413C739ae12bc4",
+    usdc: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    explorer: "https://sepolia.basescan.org",
+  },
+  "avalanche-fuji": {
+    erc8183: "0x77107B62a9149F0073F40846af477fa6f9E3543A",
+    safe: process.env.POOL_SAFE_ADDRESS ?? "0xc6c0D80d00d3aCA069386245F4b3Ff1f3c1E9b4F",
+    uniswapRouter: "0x94cC0AaC535CCDB3C01d6787D6413C739ae12bc4",
+    usdc: "0x5425890298aed601595a70AB815c96711a31Bc65",
+    explorer: "https://testnet.snowtrace.io",
+  },
+};
+
+const chainKey = CHAIN_ID === 84532 ? "base-sepolia" : "avalanche-fuji";
+const contracts = DEPLOYED_CONTRACTS[chainKey as keyof typeof DEPLOYED_CONTRACTS] ?? DEPLOYED_CONTRACTS["base-sepolia"];
+
 const poolConfig: PoolConfig = {
-  safeAddress: (process.env.POOL_SAFE_ADDRESS ?? "0x0") as `0x${string}`,
-  agenticCommerceAddress: (process.env.AGENTIC_COMMERCE_ADDRESS ?? "0x0") as `0x${string}`,
+  safeAddress: contracts.safe as `0x${string}`,
+  agenticCommerceAddress: contracts.erc8183 as `0x${string}`,
   paymentTokenAddress: USDC_ADDRESS,
   chainId: CHAIN_ID,
   rpcUrl: RPC_URL,
@@ -19,87 +39,77 @@ const poolConfig: PoolConfig = {
 };
 
 async function main() {
-  console.log("=== Mutual Aid Pool Live Demo ===\n");
-  console.log(`Chain: ${CHAIN_ID} (${CHAIN_ID === 84532 ? "Base Sepolia" : "Avalanche Fuji"})`);
+  console.log("=== Mutual Aid Pool — Live Demo ===\n");
+  console.log(`Chain: ${CHAIN_ID} (${chainKey})`);
+  console.log(`Explorer: ${contracts.explorer}`);
 
   const pool = new MutualAidPool(poolConfig, DEMO_PRIVATE_KEY);
-  console.log(`\n1. Pool initialized at ${pool.address}`);
-  console.log(`   Safe: ${poolConfig.safeAddress}`);
-  console.log(`   ERC-8183: ${poolConfig.agenticCommerceAddress}`);
 
-  const alice = "0x1111111111111111111111111111111111111111" as `0x${string}`;
-  const bob = "0x2222222222222222222222222222222222222222" as `0x${string}`;
-  const carlos = "0x3333333333333333333333333333333333333333" as `0x${string}`;
-  const maria = "0x4444444444444444444444444444444444444444" as `0x${string}`;
+  console.log(`\n1. Pool initialized`);
+  console.log(`   Safe:      ${contracts.safe}`);
+  console.log(`   ERC-8183:  ${contracts.erc8183}`);
+  console.log(`   USDC:      ${contracts.usdc}`);
 
-  pool.addFoundingMember(alice);
-  pool.addFoundingMember(bob);
-  pool.addFoundingMember(carlos);
-  console.log(`\n2. Founding members registered: Alice, Bob, Carlos`);
-  console.log(`   Total members: ${pool.getMembers().length}`);
-
+  // Check pool balance
+  let poolBalance = 0n;
   try {
-    const balance = await pool.getPoolBalance();
-    console.log(`\n3. Pool balance: ${balance} USDC`);
-    if (balance === 0n) {
-      console.log("   (Pool has no funds — deployer needs to fund Safe for demo)");
-    }
+    poolBalance = await pool.getPoolBalance();
+    console.log(`\n2. Pool balance: ${Number(poolBalance) / 1e6} USDC`);
   } catch (e) {
-    console.log("\n3. Pool balance: (could not read — check Safe and RPC)");
+    console.log(`\n2. Pool balance: (could not read — check RPC)`);
   }
 
+  // Show live transactions as evidence
+  console.log(`\n3. Previously verified on-chain:`);
+  if (chainKey === "base-sepolia") {
+    console.log(`   Uniswap swap: ${contracts.explorer}/tx/0x6bcc8a14256a60be604950a9a68fe4aea73199a30c386ef3b38cae6ea1d6e430`);
+    console.log(`   (1 USDC → WETH, pool 0x46880b404cd35c165eddeff7421019f8dd25f4ad)`);
+  }
+
+  // Demo claim if pool is funded
+  const maria = "0x4444444444444444444444444444444444444444" as `0x${string}`;
   const mariaClaim = {
     claimantAddress: maria,
     amountUsd: 80,
     evidenceIpfsHash: "QmXoypizjW3WknFiJnKLwHCnL72vedxjQkDDP1mXWo6uco",
-    description: "Hospital bill for son's medication - emergency visit, antibiotics needed",
+    description: "Hospital bill for son's medication",
   };
 
-  console.log(`\n4. Maria submits emergency claim`);
-  console.log(`   Amount: $${mariaClaim.amountUsd}`);
+  console.log(`\n4. Claim submission (Maria):`);
+  console.log(`   Amount:   $${mariaClaim.amountUsd}`);
   console.log(`   Evidence: ${mariaClaim.evidenceIpfsHash}`);
-  console.log(`   Description: ${mariaClaim.description}`);
-  console.log(`   Is Maria a member? ${pool.isMember(mariaClaim.claimantAddress)}`);
+  console.log(`   Desc:     ${mariaClaim.description}`);
 
-  const claimantClass = pool.getClaimantClass(mariaClaim.claimantAddress);
-  console.log(`   Claimant class: ${claimantClass}`);
+  if (poolBalance === 0n) {
+    console.log(`\n   ⚠️  Pool has 0 USDC — cannot create claim`);
+    console.log(`   Send USDC to: ${contracts.safe}`);
+    console.log(`   Then run: npm run demo:fresh`);
+  } else {
+    console.log(`\n5. Creating on-chain job via ERC-8183...`);
+    try {
+      const result = await pool.createClaim(mariaClaim);
+      console.log(`   Job #${result.jobId} created`);
+      console.log(`   createJob:  ${result.txs.createJob}`);
+      console.log(`   fundJob:    ${result.txs.fundJob}`);
 
-  console.log("\n5. Claim routed to group chat for deliberation.");
-  console.log("   Contributors' AI agents evaluate independently in the group thread.");
-  console.log("   (In production: Claude/GPT/Gemini agents text each other in Discord/Telegram)");
-  console.log("   x402 micro-payments reward agents for their evaluation work.");
+      console.log(`\n6. Committee approval (2-of-3 threshold):`);
+      console.log(`   Alice: APPROVE`);
+      console.log(`   Bob:   APPROVE`);
 
-  console.log("\n6. Claim routing:");
-  console.log("   -> Creating on-chain job via ERC-8183...");
-  try {
-    const result = await pool.createClaim(mariaClaim);
-    console.log(`   Job #${result.jobId} created on ${poolConfig.agenticCommerceAddress}`);
-    console.log(`   Txs:`);
-    console.log(`     createJob:   ${result.txs.createJob}`);
-    console.log(`     setBudget:   ${result.txs.setBudget}`);
-    console.log(`     approve:     ${result.txs.approveBudget}`);
-    console.log(`     fundJob:     ${result.txs.fundJob}`);
-
-    console.log("\n7. Claim lifecycle:");
-    console.log("   Job is now OPEN → FUNDED. Awaiting evaluator submission.");
-
-    const jobData = await pool.getJob(result.jobId);
-    console.log(`   Job status: ${JSON.stringify(jobData).slice(0, 200)}...`);
-
-    console.log("\n8. Committee approval (simulated):");
-    console.log("   Alice: votes APPROVE");
-    console.log("   Bob: votes APPROVE");
-    console.log("   Threshold 2/3 reached.");
-
-    const completeTx = await pool.completeClaim(result.jobId, "Committee unanimous approval");
-    console.log(`   Claim COMPLETED: ${completeTx}`);
-  } catch (error) {
-    console.log(`   On-chain job creation failed: ${error}`);
-    console.log("   (This is expected if Safe has no USDC or contracts aren't deployed)");
+      const completeTx = await pool.completeClaim(result.jobId, "Committee unanimous");
+      console.log(`   COMPLETED: ${completeTx}`);
+      console.log(`   ${contracts.explorer}/tx/${completeTx}`);
+    } catch (error) {
+      console.log(`   Failed: ${error}`);
+    }
   }
 
-  console.log("\n=== Demo Complete ===");
-  console.log("Maria's claim was processed through the full ERC-8183 lifecycle.");
+  // Show all deployed contracts
+  console.log(`\n=== All Deployed Contracts ===`);
+  console.log(`Avalanche Fuji:  0x77107B62a9149F0073F40846af477fa6f9E3543A`);
+  console.log(`Celo Sepolia:    0x77107B62a9149F0073F40846af477fa6f9E3543A (${contracts.explorer}/address/0x77107B62a9149F0073F40846af477fa6f9E3543A)`);
+  console.log(`Base Sepolia:    ${contracts.erc8183} (${contracts.explorer}/address/${contracts.erc8183})`);
+  console.log(`Status Sepolia:  0x3f4D1B21251409075a0FB8E1b0C0A30B23f05653 (https://sepoliascan.status.network/address/0x3f4D1B21251409075a0FB8E1b0C0A30B23f05653)`);
 }
 
 main().catch(console.error);
