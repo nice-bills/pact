@@ -10,7 +10,10 @@ import type {
 } from "./types.js";
 import { AGENTIC_COMMERCE_ABI } from "./abi.js";
 import { verifyClaimAuthorization, type ClaimSigningContext } from "./claims.js";
+import { jobRecordToClaim } from "./claims-list.js";
+import { loadMembersForPool } from "./members.js";
 import { ERC8004_IDENTITY_REGISTRY } from "./erc8004.js";
+import type { Claim, ClaimStatus } from "./types.js";
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
 export const MEMBER_STREAM_GRACE_PERIOD_MS = 7 * 24 * 60 * 60 * 1000;
 const ERC20_ABI = [
@@ -182,6 +185,53 @@ export class MutualAidPool {
   }
   getMembers(): PoolMember[] {
     return Array.from(this.members.values());
+  }
+
+  /** Hydrate in-memory members from config/members.json (written by pool join). */
+  loadPersistedMembers(): number {
+    const records = loadMembersForPool(this.config.safeAddress, this.config.chainId);
+    for (const record of records) {
+      const address = record.address as `0x${string}`;
+      const key = address.toLowerCase();
+      if (this.members.has(key)) continue;
+      this.members.set(key, {
+        address,
+        vouchedBy: record.vouchedBy as `0x${string}`,
+        joinedAt: record.joinedAt,
+        streamActive: false,
+        lastStreamUpdateAt: record.joinedAt,
+      });
+    }
+    return records.length;
+  }
+
+  async listClaims(filter?: { status?: ClaimStatus }): Promise<Claim[]> {
+    const counter = (await this.publicClient.readContract({
+      address: this.config.agenticCommerceAddress,
+      abi: AGENTIC_COMMERCE_ABI,
+      functionName: "jobCounter",
+    })) as bigint;
+    const total = Number(counter);
+    if (total === 0) return [];
+
+    const claims: Claim[] = [];
+    for (let id = 1; id <= total; id++) {
+      const job = await this.getJob(BigInt(id));
+      const claim = jobRecordToClaim({
+        id: job.id,
+        client: job.client,
+        provider: job.provider,
+        evaluator: job.evaluator,
+        description: job.description,
+        budget: job.budget,
+        expiredAt: job.expiredAt,
+        status: Number(job.status),
+      });
+      if (!filter?.status || claim.status === filter.status) {
+        claims.push(claim);
+      }
+    }
+    return claims;
   }
   async getPoolBalance(): Promise<bigint> {
     const balance = await this.publicClient.readContract({

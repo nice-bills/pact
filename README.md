@@ -185,6 +185,9 @@ src/
 ├── core/
 │   ├── pool.ts           # MutualAidPool — Safe + ERC-8183 + stream sync
 │   ├── claims.ts         # Claim authorization + signature verification
+│   ├── claims-list.ts    # On-chain job → claim mapping for CLI/SDK
+│   ├── members.ts        # config/members.json persistence helpers
+│   ├── deployments.ts    # Known testnet addresses from config/deployments.json
 │   ├── streaming.ts      # Superfluid USDCx stream management
 │   ├── x402.ts           # x402 HTTP payment protocol
 │   ├── ens.ts            # ENS name + contact resolution
@@ -255,6 +258,10 @@ npx tsx src/cli/index.ts pool create --name "My Community" --threshold 2 --membe
 
 # Share the Safe address with members
 # Members open Superfluid USDCx streams to contribute monthly
+
+# List on-chain claims (ERC-8183 address from .env or config/deployments.json)
+npx tsx src/cli/index.ts claim list --pool 0xYourSafe
+npx tsx src/cli/index.ts pool status --pool 0xYourSafe
 ```
 
 **For an AI agent (DevSpot, OpenCode, etc.):**
