@@ -115,6 +115,9 @@ export const CHAIN_CONFIG = CHAIN_CONFIGS[currentChainKey];
 
 export const CHAIN = CHAIN_CONFIG.chain;
 export const CHAIN_ID = CHAIN_CONFIG.id;
+
+/** Chain IDs supported by MutualAidPool (must match CHAIN_NAME / CHAIN_CONFIG). */
+export const SUPPORTED_POOL_CHAIN_IDS = [84532, 43113, 44787, 11142220] as const;
 export const RPC_URL = CHAIN_CONFIG.rpc;
 export const USDC_ADDRESS = CHAIN_CONFIG.usdc as `0x${string}`;
 export const CHAIN_EXPLORER = CHAIN_CONFIG.explorer;
