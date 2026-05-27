@@ -1,6 +1,6 @@
-import { createPublicClient, createWalletClient, http, padHex, parseUnits, stringToHex } from "viem";
+import { createPublicClient, createWalletClient, decodeEventLog, http, padHex, parseUnits, stringToHex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { CHAIN } from "./config.js";
+import { CHAIN, SUPPORTED_POOL_CHAIN_IDS } from "./config.js";
 import type {
   ClaimCreationResult,
   PoolConfig,
@@ -13,7 +13,6 @@ import { verifyClaimAuthorization, type ClaimSigningContext } from "./claims.js"
 import { ERC8004_IDENTITY_REGISTRY } from "./erc8004.js";
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
 export const MEMBER_STREAM_GRACE_PERIOD_MS = 7 * 24 * 60 * 60 * 1000;
-const JOB_CREATED_TOPIC = "0x" + "a".repeat(64);
 const ERC20_ABI = [
   {
     type: "function",
@@ -63,8 +62,10 @@ export class MutualAidPool {
     privateKey: `0x${string}`,
     getStreamInfoFn?: StreamInfoFn
   ) {
-    if (![84532, 43113, 44787].includes(config.chainId)) {
-      throw new Error(`Unsupported chainId ${config.chainId}. Expected Base Sepolia (84532), Avalanche Fuji (43113), or Celo Alfajores (44787).`);
+    if (!(SUPPORTED_POOL_CHAIN_IDS as readonly number[]).includes(config.chainId)) {
+      throw new Error(
+        `Unsupported chainId ${config.chainId}. Expected one of: Base Sepolia (84532), Avalanche Fuji (43113), Celo Alfajores (44787), Celo Sepolia (11142220).`
+      );
     }
     if (isZeroAddress(config.safeAddress)) {
       throw new Error("Pool safeAddress must be set to a non-zero address");
@@ -267,11 +268,24 @@ export class MutualAidPool {
     await this.publicClient.waitForTransactionReceipt({ hash: tx });
     return tx;
   }
-  private extractJobId(logs: readonly { topics: readonly `0x${string}`[]; address: `0x${string}` }[]): bigint {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private extractJobId(logs: any[]): bigint {
     for (const log of logs) {
-      if (log.address.toLowerCase() !== this.config.agenticCommerceAddress.toLowerCase()) continue;
-      if (log.topics[0] !== JOB_CREATED_TOPIC || !log.topics[1]) continue;
-      return BigInt(log.topics[1]);
+      if (log.address.toLowerCase() !== this.config.agenticCommerceAddress.toLowerCase()) {
+        continue;
+      }
+      try {
+        const decoded = decodeEventLog({
+          abi: AGENTIC_COMMERCE_ABI,
+          data: log.data,
+          topics: log.topics,
+        });
+        if (decoded.eventName === "JobCreated" && decoded.args) {
+          return (decoded.args as unknown as { jobId: bigint }).jobId;
+        }
+      } catch {
+        continue;
+      }
     }
     throw new Error("JobCreated event not found in transaction receipt");
   }

@@ -8,8 +8,12 @@ export interface ClaimSigningContext {
 
 export function buildClaimAuthorizationMessage(
   submission: ClaimSubmission,
-  context: ClaimSigningContext
+  context: ClaimSigningContext,
+  signedAtMs: number
 ): string {
+  if (!submission.nonce?.trim()) {
+    throw new Error("Claim submission nonce is required for authorization");
+  }
   return [
     "MutualAidPool Claim Authorization",
     `Pool:${context.poolAddress}`,
@@ -18,7 +22,7 @@ export function buildClaimAuthorizationMessage(
     `AmountUsd:${submission.amountUsd}`,
     `Evidence:${submission.evidenceIpfsHash}`,
     `Description:${submission.description}`,
-    `SignedAt:${Math.floor(Date.now() / 1000)}`,
+    `SignedAt:${Math.floor(signedAtMs / 1000)}`,
     `Nonce:${submission.nonce}`,
   ].join("\n");
 }
@@ -27,8 +31,15 @@ export async function verifyClaimAuthorization(
   submission: SignedClaimSubmission,
   context: ClaimSigningContext
 ): Promise<boolean> {
+  if (!isClaimSignatureFresh(submission.signedAt)) {
+    return false;
+  }
   try {
-    const rebuiltMessage = buildClaimAuthorizationMessage(submission, context);
+    const rebuiltMessage = buildClaimAuthorizationMessage(
+      submission,
+      context,
+      submission.signedAt
+    );
     const signer = await recoverMessageAddress({ message: rebuiltMessage, signature: submission.signature });
     return signer.toLowerCase() === submission.claimantAddress.toLowerCase();
   } catch {

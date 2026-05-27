@@ -1,9 +1,12 @@
 import { CHAIN_ID, RPC_URL, USDC_ADDRESS } from "../../core/config";
 import { MutualAidPool } from "../../core/pool";
-import { buildClaimAuthorizationMessage } from "../../core/claims";
+import {
+  buildClaimAuthorizationMessage,
+  verifyClaimAuthorization,
+} from "../../core/claims";
 import { createWalletClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import type { PoolConfig, ClaimSubmission } from "../../core/types";
+import type { PoolConfig, ClaimSubmission, SignedClaimSubmission } from "../../core/types";
 
 function getPoolConfig(poolAddress: `0x${string}`): PoolConfig {
   return {
@@ -36,9 +39,19 @@ export async function claimSubmit(opts: {
   description: string;
   claimant?: string;
 }): Promise<void> {
-  const claimant = (opts.claimant as `0x${string}`) || getDeployerKey();
+  if (!process.env.AGENTIC_COMMERCE_ADDRESS?.trim()) {
+    throw new Error("AGENTIC_COMMERCE_ADDRESS not set in environment");
+  }
+
+  const fundingKey = opts.claimant
+    ? getClaimantKey(opts.claimant as `0x${string}`)
+    : getDeployerKey();
+  const fundingAccount = privateKeyToAccount(fundingKey);
+  const claimant = (opts.claimant as `0x${string}`) ?? fundingAccount.address;
+
   const config = getPoolConfig(opts.pool);
-  const pool = new MutualAidPool(config, getDeployerKey());
+  const pool = new MutualAidPool(config, fundingKey);
+  const signingContext = { poolAddress: opts.pool, chainId: CHAIN_ID };
 
   const nonce = crypto.randomUUID().replace(/-/g, "").slice(0, 16);
   const submission: ClaimSubmission = {
@@ -49,13 +62,24 @@ export async function claimSubmit(opts: {
     nonce,
   };
 
-  const account = privateKeyToAccount(claimant);
-  const walletClient = createWalletClient({ account, transport: http(RPC_URL) });
+  const signedAt = Date.now();
+  const msg = buildClaimAuthorizationMessage(submission, signingContext, signedAt);
+  const signature = await createWalletClient({
+    account: fundingAccount,
+    transport: http(RPC_URL),
+  }).signMessage({ message: msg });
 
-  const msg = buildClaimAuthorizationMessage(submission, { poolAddress: opts.pool, chainId: CHAIN_ID });
-  const signature = await walletClient.signMessage({ message: msg });
+  const signedSubmission: SignedClaimSubmission = {
+    ...submission,
+    signedAt,
+    nonce,
+    signature,
+  };
 
-  const signedSubmission = { ...submission, signedAt: Date.now(), signature };
+  const authorized = await verifyClaimAuthorization(signedSubmission, signingContext);
+  if (!authorized) {
+    throw new Error("Claim authorization signature verification failed");
+  }
 
   console.log(`Claim submitted by ${claimant}:`);
   console.log(`  Amount: $${opts.amount}`);
@@ -63,9 +87,15 @@ export async function claimSubmit(opts: {
   console.log(`  Description: ${opts.description}`);
   console.log(`  Signed: ${signature.slice(0, 20)}...`);
 
+  console.log("\nCreating on-chain ERC-8183 job...");
+  const result = await pool.createClaim(submission);
+  console.log(`  Job ID: ${result.jobId}`);
+  console.log(`  createJob tx: ${result.txs.createJob}`);
+  console.log(`  fundJob tx: ${result.txs.fundJob}`);
+
   console.log("\nClaim routed to group chat for deliberation.");
   console.log("Contributors' AI agents evaluate independently in the group thread.");
-  console.log("After deliberation, a Safe multisig executes payment via x402.");
+  console.log("After deliberation, use: claim approve --claim-id <jobId>");
 }
 
 export async function claimList(opts: {

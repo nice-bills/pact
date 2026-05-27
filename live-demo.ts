@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { createPublicClient, createWalletClient, http, parseUnits, padHex, stringToHex } from "viem";
+import { createPublicClient, createWalletClient, http, parseEventLogs, parseUnits, padHex, stringToHex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { baseSepolia } from "viem/chains";
 import { AGENTIC_COMMERCE_ABI } from "./src/core/abi.js";
@@ -66,7 +66,15 @@ async function main() {
     args: [claimant, evaluator, expiry, description],
   }) as `0x${string}`;
   const createReceipt = await waitForTx(createJobTx);
-  const jobId = createReceipt.logs[0]?.topics[1] ? BigInt(createReceipt.logs[0].topics[1]) : 2n;
+  const jobCreated = parseEventLogs({
+    abi: AGENTIC_COMMERCE_ABI,
+    logs: createReceipt.logs.filter((log) => log.address.toLowerCase() === ERC8183.toLowerCase()),
+    eventName: "JobCreated",
+  })[0];
+  if (!jobCreated || jobCreated.eventName !== "JobCreated") {
+    throw new Error("JobCreated event not found in createJob receipt");
+  }
+  const jobId = jobCreated.args.jobId;
   console.log(`  Job #${jobId} created`);
   console.log(`  Tx: ${EXPLORER}/tx/${createJobTx}`);
 
