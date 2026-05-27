@@ -1,24 +1,19 @@
-import { CHAIN_ID, RPC_URL, USDC_ADDRESS } from "../../core/config";
 import { MutualAidPool } from "../../core/pool";
 import {
   buildClaimAuthorizationMessage,
   verifyClaimAuthorization,
 } from "../../core/claims";
+import {
+  CLAIM_LIST_HEADER,
+  formatClaimRow,
+  JOB_STATUS_BY_INDEX,
+} from "../../core/claims-list";
+import type { ClaimStatus } from "../../core/types";
 import { createWalletClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import type { PoolConfig, ClaimSubmission, SignedClaimSubmission } from "../../core/types";
-
-function getPoolConfig(poolAddress: `0x${string}`): PoolConfig {
-  return {
-    safeAddress: poolAddress,
-    agenticCommerceAddress: (process.env.AGENTIC_COMMERCE_ADDRESS ?? "") as `0x${string}`,
-    paymentTokenAddress: USDC_ADDRESS,
-    chainId: CHAIN_ID,
-    rpcUrl: RPC_URL,
-    threshold: 2,
-    monthlyContributionUsd: 5,
-  };
-}
+import { CHAIN_ID, RPC_URL } from "../../core/config";
+import type { ClaimSubmission, SignedClaimSubmission } from "../../core/types";
+import { getPoolConfig, requireAgenticCommerce } from "../pool-config.js";
 
 function getDeployerKey(): `0x${string}` {
   const key = process.env.DEPLOYER_PRIVATE_KEY;
@@ -32,6 +27,17 @@ function getClaimantKey(claimantAddress: `0x${string}`): `0x${string}` {
   return getDeployerKey();
 }
 
+function parseStatusFilter(status?: string): ClaimStatus | undefined {
+  if (!status) return undefined;
+  const normalized = status.toLowerCase() as ClaimStatus;
+  if (!JOB_STATUS_BY_INDEX.includes(normalized)) {
+    throw new Error(
+      `Invalid status "${status}". Use one of: ${JOB_STATUS_BY_INDEX.join(", ")}`
+    );
+  }
+  return normalized;
+}
+
 export async function claimSubmit(opts: {
   pool: `0x${string}`;
   amount: number;
@@ -39,9 +45,7 @@ export async function claimSubmit(opts: {
   description: string;
   claimant?: string;
 }): Promise<void> {
-  if (!process.env.AGENTIC_COMMERCE_ADDRESS?.trim()) {
-    throw new Error("AGENTIC_COMMERCE_ADDRESS not set in environment");
-  }
+  requireAgenticCommerce();
 
   const fundingKey = opts.claimant
     ? getClaimantKey(opts.claimant as `0x${string}`)
@@ -51,6 +55,7 @@ export async function claimSubmit(opts: {
 
   const config = getPoolConfig(opts.pool);
   const pool = new MutualAidPool(config, fundingKey);
+  pool.loadPersistedMembers();
   const signingContext = { poolAddress: opts.pool, chainId: CHAIN_ID };
 
   const nonce = crypto.randomUUID().replace(/-/g, "").slice(0, 16);
@@ -102,17 +107,37 @@ export async function claimList(opts: {
   pool: `0x${string}`;
   status?: string;
 }): Promise<void> {
+  requireAgenticCommerce();
+  const statusFilter = parseStatusFilter(opts.status);
+
   const config = getPoolConfig(opts.pool);
   const pool = new MutualAidPool(config, getDeployerKey());
+  pool.loadPersistedMembers();
+
   console.log(`Pool: ${opts.pool}`);
-  console.log(`Status filter: ${opts.status ?? "all"}`);
-  console.log("(claim list queries ERC-8183 — implement with getJobList)");
+  console.log(`ERC-8183: ${config.agenticCommerceAddress}`);
+  if (statusFilter) {
+    console.log(`Filter: ${statusFilter}`);
+  }
+
+  const claims = await pool.listClaims(statusFilter ? { status: statusFilter } : undefined);
+  if (claims.length === 0) {
+    console.log("\nNo claims found.");
+    return;
+  }
+
+  console.log(`\n${claims.length} claim(s):\n`);
+  console.log(CLAIM_LIST_HEADER);
+  for (const claim of claims) {
+    console.log(formatClaimRow(claim));
+  }
 }
 
 export async function claimApprove(opts: {
   pool: `0x${string}`;
   claimId: number;
 }): Promise<void> {
+  requireAgenticCommerce();
   const config = getPoolConfig(opts.pool);
   const pool = new MutualAidPool(config, getDeployerKey());
   try {
@@ -127,6 +152,7 @@ export async function claimReject(opts: {
   pool: `0x${string}`;
   claimId: number;
 }): Promise<void> {
+  requireAgenticCommerce();
   const config = getPoolConfig(opts.pool);
   const pool = new MutualAidPool(config, getDeployerKey());
   try {

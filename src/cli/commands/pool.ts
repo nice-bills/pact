@@ -1,23 +1,10 @@
 import { createPublicClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { CHAIN, CHAIN_ID, RPC_URL, USDC_ADDRESS, SUPERFLUID_HOST, USDCX_ADDRESS } from "../../core/config";
+import { CHAIN, CHAIN_ID, RPC_URL, SUPERFLUID_HOST, USDCX_ADDRESS } from "../../core/config";
 import { ERC8004_IDENTITY_REGISTRY } from "../../core/erc8004";
 import { MutualAidPool } from "../../core/pool";
-import type { PoolConfig } from "../../core/types";
-
-function getPoolConfig(poolAddress: `0x${string}`): PoolConfig {
-  return {
-    safeAddress: poolAddress,
-    agenticCommerceAddress: (process.env.AGENTIC_COMMERCE_ADDRESS ?? "") as `0x${string}`,
-    paymentTokenAddress: USDC_ADDRESS,
-    chainId: CHAIN_ID,
-    rpcUrl: RPC_URL,
-    threshold: 2,
-    monthlyContributionUsd: 5,
-    superfluidHost: SUPERFLUID_HOST ?? undefined,
-    superTokenAddress: USDCX_ADDRESS ?? undefined,
-  };
-}
+import { membersFilePath, poolMembersKey } from "../../core/members.js";
+import { getPoolConfig, requireAgenticCommerce } from "../pool-config.js";
 
 function getDeployerKey(): `0x${string}` {
   const key = process.env.DEPLOYER_PRIVATE_KEY;
@@ -108,15 +95,11 @@ export async function poolJoin(opts: {
   const pool = new MutualAidPool(config, privateKey);
 
   const fs = await import("fs");
-  const path = await import("path");
-  const membersPath = path.join(process.cwd(), "config", "members.json");
+  const { readMembersFile } = await import("../../core/members.js");
+  const membersPath = membersFilePath();
 
-  let members: Record<string, Record<string, { address: string; vouchedBy: string; joinedAt: number; chain: string }>> = {};
-  if (fs.existsSync(membersPath)) {
-    members = JSON.parse(fs.readFileSync(membersPath, "utf-8"));
-  }
-
-  const poolKey = `${opts.pool.toLowerCase()}-${CHAIN_ID}`;
+  const members = readMembersFile();
+  const poolKey = poolMembersKey(opts.pool, CHAIN_ID);
   if (!members[poolKey]) {
     members[poolKey] = {};
   }
@@ -129,6 +112,7 @@ export async function poolJoin(opts: {
 
   fs.writeFileSync(membersPath, JSON.stringify(members, null, 2));
 
+  pool.loadPersistedMembers();
   pool.vouchForMember(voucher, newMember);
 
   console.log(`\nMember ${newMember} joined pool ${opts.pool}`);
@@ -177,16 +161,37 @@ export async function poolStatus(opts: { pool: `0x${string}`; ensName?: string }
   const code = await publicClient.getBytecode({ address: opts.pool });
   console.log(`Safe deployed: ${code && code !== "0x" ? "yes" : "no"}`);
 
-  const erc8183 = config.agenticCommerceAddress;
-  if (erc8183 && erc8183 !== "0x0000000000000000000000000000000000000000") {
+  try {
+    const erc8183 = requireAgenticCommerce();
     const ercCode = await publicClient.getBytecode({ address: erc8183 });
+    console.log(`ERC-8183: ${erc8183}`);
     console.log(`ERC-8183 deployed: ${ercCode && ercCode !== "0x" ? "yes" : "no"}`);
+
+    const pool = new MutualAidPool({ ...config, agenticCommerceAddress: erc8183 }, getDeployerKey());
+    const loadedMembers = pool.loadPersistedMembers();
+    console.log(`Persisted members (config/members.json): ${loadedMembers}`);
+
+    const claims = await pool.listClaims();
+    const byStatus = claims.reduce<Record<string, number>>((acc, claim) => {
+      acc[claim.status] = (acc[claim.status] ?? 0) + 1;
+      return acc;
+    }, {});
+    console.log(`On-chain claims: ${claims.length}`);
+    if (claims.length > 0) {
+      const summary = Object.entries(byStatus)
+        .map(([status, count]) => `${status}=${count}`)
+        .join(", ");
+      console.log(`  By status: ${summary}`);
+    }
+  } catch (error) {
+    console.log(`ERC-8183: (${error instanceof Error ? error.message : error})`);
   }
 }
 
 export async function poolSync(opts: { pool: `0x${string}` }): Promise<void> {
   const config = getPoolConfig(opts.pool);
   const pool = new MutualAidPool(config, getDeployerKey());
+  pool.loadPersistedMembers();
   console.log("Syncing all member streams...");
   await pool.syncAllMemberStreams();
   const members = pool.getMembers();

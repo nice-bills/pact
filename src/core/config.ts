@@ -1,6 +1,7 @@
 import { defineChain } from "viem";
 import { baseSepolia } from "viem/chains";
 import { localhost } from "viem/chains";
+import { resolveAgenticCommerceAddress } from "./deployments.js";
 
 const celoAlfajores = defineChain({
   id: 44787,
@@ -137,5 +138,5 @@ export const USDCX_ADDRESS = SUPERFLUID_CONFIG[sfKey]?.token ?? null;
 
 export const ERC8004_IDENTITY_REGISTRY: `0x${string}` = (CHAIN_CONFIG.erc8004 ?? "0x0000000000000000000000000000000000000000") as `0x${string}`;
 
-export const AGENTIC_COMMERCE_ADDRESS = process.env.AGENTIC_COMMERCE_ADDRESS ?? "";
+export const AGENTIC_COMMERCE_ADDRESS = resolveAgenticCommerceAddress(CHAIN_NAME, CHAIN_ID);
 export const POOL_SAFE_ADDRESS = process.env.POOL_SAFE_ADDRESS ?? "";
